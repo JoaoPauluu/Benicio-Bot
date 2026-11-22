@@ -4,8 +4,9 @@ Add a new feature by creating a module in ``whatsapp_bot/commands/`` and using
 the decorators below. Every module in that package is imported automatically.
 
     from whatsapp_bot.registry import command
+    from whatsapp_bot.roles import Role
 
-    @command("foo", help="faz foo")
+    @command("foo", help="faz foo", role=Role.ADMIN)   # role is optional
     async def foo(ctx):
         await ctx.reply("foo!")
 """
@@ -14,9 +15,11 @@ from __future__ import annotations
 
 import importlib
 import pkgutil
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
+
+from .roles import Role, normalize
 
 if TYPE_CHECKING:
     from .context import Context
@@ -30,7 +33,7 @@ class Command:
     func: Handler
     help: str = ""
     usage: str = ""
-    owner_only: bool = False
+    roles: frozenset[Role] = frozenset()   # any one of these is enough; empty = everyone
     group_only: bool = False
     aliases: tuple[str, ...] = ()
 
@@ -38,7 +41,7 @@ class Command:
 @dataclass
 class Listener:
     func: Handler
-    owner_only: bool = False
+    roles: frozenset[Role] = frozenset()
     name: str = ""
 
 
@@ -74,12 +77,15 @@ def command(
     name: str,
     help: str = "",
     usage: str = "",
-    owner_only: bool = False,
+    role: Role | Iterable[Role] | None = None,
     group_only: bool = False,
     aliases: tuple[str, ...] = (),
 ) -> Callable[[Handler], Handler]:
+    """``role``: who may run it (one role or several, any matches). None = everyone."""
+
     def deco(func: Handler) -> Handler:
-        cmd = Command(name.lower(), func, help, usage, owner_only, group_only, tuple(a.lower() for a in aliases))
+        cmd = Command(name.lower(), func, help, usage, normalize(role), group_only,
+                      tuple(a.lower() for a in aliases))
         for key in (cmd.name, *cmd.aliases):
             REGISTRY.commands[key] = cmd
         return func
@@ -87,15 +93,15 @@ def command(
     return deco
 
 
-def listener(owner_only: bool = False) -> Callable[[Handler], Handler]:
+def listener(role: Role | Iterable[Role] | None = None) -> Callable[[Handler], Handler]:
     """Run ``func`` for every incoming message (mentioned or not).
 
-    With ``owner_only=True`` it only runs for messages sent by the owner,
-    which is the hook for owner-specific special actions.
+    With ``role=Role.OWNER`` (or any role) it only runs for messages from
+    people holding that role, e.g. owner-specific special actions.
     """
 
     def deco(func: Handler) -> Handler:
-        REGISTRY.listeners.append(Listener(func, owner_only, func.__name__))
+        REGISTRY.listeners.append(Listener(func, normalize(role), func.__name__))
         return func
 
     return deco

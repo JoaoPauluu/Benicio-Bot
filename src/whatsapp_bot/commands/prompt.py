@@ -1,8 +1,9 @@
 from whatsapp_bot.registry import command
+from whatsapp_bot.roles import Role
 
 
 @command("prompt", help="mostra/define/limpa o prompt extra da IA neste chat", usage="[texto|limpar]",
-         owner_only=True)
+         role=Role.ADMIN)
 async def prompt(ctx):
     if not ctx.args:
         current = ctx.store.get_prompt(ctx.chat)

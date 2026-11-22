@@ -1,6 +1,7 @@
 """Generic per-chat on/off switches for any registered feature."""
 
 from whatsapp_bot.registry import REGISTRY, command, feature
+from whatsapp_bot.roles import Role
 
 feature("ia", help="responde com IA quando mencionado sem comando", default=True)
 
@@ -8,7 +9,7 @@ ON = {"on", "ligar", "liga", "sim", "1"}
 OFF = {"off", "desligar", "desliga", "nao", "não", "0"}
 
 
-@command("recurso", help="liga/desliga recursos neste chat", usage="[nome on|off]", owner_only=True,
+@command("recurso", help="liga/desliga recursos neste chat", usage="[nome on|off]", role=Role.ADMIN,
          aliases=("recursos",))
 async def recurso(ctx):
     feats = REGISTRY.features

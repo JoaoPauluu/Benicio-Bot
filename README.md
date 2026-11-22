@@ -34,23 +34,33 @@ Build locally instead: `docker build -t benicio-bot .`
 ## Usage
 
 - **Groups:** @mention the bot, or reply to one of its messages, followed by a command. Anything else after the mention goes to Gemini.
-- **DMs:** no mention needed. Only the owner gets answers unless `ALLOW_DMS_FROM_OTHERS=true`.
+- **DMs:** no mention needed. Only people with a role (owner, admin, mídia) get answers unless `ALLOW_DMS_FROM_OTHERS=true`.
 - **Replies:** every answer is a native WhatsApp reply. Scheduled sends are plain messages.
 
 | Command | Who | What |
 |---|---|---|
-| `ajuda` | all | list commands (owner sees 🔒 ones too) |
+| `ajuda` | all | list the commands you are allowed to run (🔒 marks the required role) |
 | `bomdia` | all | quote of the day from pensador.com, with Gemini as fallback |
 | `ia <texto>` | all | ask Gemini explicitly (handy inside schedules) |
-| `status` | owner | uptime, model, schedules |
-| `comentarista` | owner | toggle commentator mode in this group (every `COMENTARISTA_INTERVAL` msgs) |
-| `agendar HH:MM [diario\|uteis\|fds\|seg,qua\|AAAA-MM-DD] <comando ou texto>` | owner | schedule in this chat |
-| `agendamentos` / `desagendar <id>` | owner | list / remove schedules |
-| `prompt [texto\|limpar]` | owner | extra Gemini instructions for this chat |
-| `recurso [nome on\|off]` | owner | per-chat switches (`ia`, `comentarista`, …) |
-| `ping` | owner | liveness check |
+| `status` | admin | uptime, model, schedules |
+| `comentarista` | admin | toggle commentator mode in this group (every `COMENTARISTA_INTERVAL` msgs) |
+| `agendar HH:MM [diario\|uteis\|fds\|seg,qua\|AAAA-MM-DD] <comando ou texto>` | admin | schedule in this chat |
+| `agendamentos` / `desagendar <id>` | admin | list / remove schedules |
+| `prompt [texto\|limpar]` | admin | extra Gemini instructions for this chat |
+| `recurso [nome on\|off]` | admin | per-chat switches (`ia`, `comentarista`, …) |
+| `ping` | admin | liveness check |
+| `cargo` / `cargos` | owner | list roles |
+| `cargo dar\|tirar <admin\|media> <@pessoa\|número>` | owner | give / take a role (you can also reply to the person's message) |
 
-Non-owners who use owner-only commands get no response.
+### Roles
+
+Roles are global (they apply in every chat) and are saved in `data/state.json`.
+
+- **dono (owner):** the `OWNER_NUMBER` from `.env`. Holds every role, and is the only one who can manage roles.
+- **admin:** can run everything except owner-only commands.
+- **mídia (`media`):** reserved for media commands. None need it yet.
+
+Anyone who tries a command without the required role is told they are not allowed.
 
 ## Prompts
 
@@ -64,6 +74,7 @@ Create `src/whatsapp_bot/commands/<anything>.py`. It is auto-discovered:
 
 ```python
 from whatsapp_bot.registry import command, feature, listener
+from whatsapp_bot.roles import Role
 
 @command("dado", help="rola um dado", usage="[lados]")
 async def dado(ctx):
@@ -72,7 +83,11 @@ async def dado(ctx):
 
 meu = feature("meurecurso", help="...", default=False)   # togglable via `recurso meurecurso on`
 
-@listener()                  # runs on every message; owner_only=True for owner hooks
+@command("figurinha", help="...", role=Role.MEDIA)   # restrict to a role (admin/owner pass too)
+async def figurinha(ctx):
+    ...
+
+@listener()                  # runs on every message; role=Role.OWNER for owner hooks
 async def watcher(ctx):
     if ctx.store.get_flag(ctx.chat, "meurecurso"):
         ...
@@ -81,10 +96,12 @@ async def watcher(ctx):
 `ctx` gives you:
 
 - `reply()` (native quoted reply) and `send()`
-- `args`, `text`, `is_owner`, `is_group`, `chat`, `incoming`
+- `args`, `text`, `roles` / `has(Role.X)` / `is_owner`, `is_group`, `chat`, `incoming`
 - `store` (flags, prompts, schedules), `ai.ask()`, `settings`, `bot`
 
 Owner-only special actions on every owner message go in `commands/dono.py`.
+
+To add a new role, add it to `Role` and `LABELS` in `src/whatsapp_bot/roles.py`. The owner and admins get it automatically, and `cargo` can grant it.
 
 ## Tests
 

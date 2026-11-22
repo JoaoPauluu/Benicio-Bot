@@ -1,6 +1,7 @@
 import time
 
 from whatsapp_bot.registry import command
+from whatsapp_bot.roles import Role
 
 
 def format_uptime(seconds: float) -> str:
@@ -14,7 +15,7 @@ def format_uptime(seconds: float) -> str:
     return " ".join(parts)
 
 
-@command("status", help="tempo online do bot", owner_only=True)
+@command("status", help="tempo online do bot", role=Role.ADMIN)
 async def status(ctx):
     store = ctx.store
     await ctx.reply(

@@ -1,4 +1,4 @@
-"""Tiny JSON-backed persistent state (per-chat flags/prompts and schedules)."""
+"""Tiny JSON-backed persistent state (per-chat flags/prompts, schedules and global roles)."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import json
 import os
 import secrets
 import threading
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -14,7 +15,7 @@ class Store:
     def __init__(self, path: Path):
         self.path = path
         self._lock = threading.Lock()
-        self._data: dict[str, Any] = {"chats": {}, "schedules": []}
+        self._data: dict[str, Any] = {"chats": {}, "schedules": [], "roles": []}
         if path.exists():
             self._data.update(json.loads(path.read_text(encoding="utf-8")))
 
@@ -70,3 +71,54 @@ class Store:
             if changed:
                 self._save()
             return changed
+
+    # ---- global roles --------------------------------------------------
+    # {"roles": [{"ids": ["5511...", "99001"], "roles": ["admin"]}, ...]}: one record per
+    # person, holding every id they were seen under (phone, 9th-digit variant, LID).
+    def _people(self, ids: Iterable[str]) -> list[dict[str, Any]]:
+        ids = set(ids) - {""}
+        return [p for p in self._data["roles"] if ids & set(p["ids"])]
+
+    def roles_of(self, ids: Iterable[str]) -> set[str]:
+        return {r for p in self._people(ids) for r in p["roles"]}
+
+    def grant_role(self, ids: Iterable[str], role: str) -> None:
+        with self._lock:
+            person = self._merge(ids)
+            if role not in person["roles"]:
+                person["roles"].append(role)
+            self._save()
+
+    def revoke_role(self, ids: Iterable[str], role: str) -> bool:
+        with self._lock:
+            changed = False
+            for person in self._people(ids):
+                if role in person["roles"]:
+                    person["roles"].remove(role)
+                    changed = True
+            if changed:
+                self._data["roles"] = [p for p in self._data["roles"] if p["roles"]]
+                self._save()
+            return changed
+
+    def link_ids(self, ids: Iterable[str]) -> None:
+        """A person with roles seen under a new id (e.g. LID next to phone): remember it."""
+        ids = set(ids) - {""}
+        people = self._people(ids)
+        if not people or (len(people) == 1 and ids <= set(people[0]["ids"])):
+            return
+        with self._lock:
+            self._merge(ids)
+            self._save()
+
+    def _merge(self, ids: Iterable[str]) -> dict[str, Any]:
+        """Single record covering ``ids`` (merging any overlapping ones). Caller saves."""
+        ids = set(ids) - {""}
+        people = self._people(ids)
+        merged = {"ids": sorted(ids.union(*(p["ids"] for p in people))),
+                  "roles": sorted({r for p in people for r in p["roles"]})}
+        self._data["roles"] = [p for p in self._data["roles"] if all(p is not q for q in people)] + [merged]
+        return merged
+
+    def role_holders(self) -> list[dict[str, Any]]:
+        return [p for p in self._data["roles"] if p["roles"]]

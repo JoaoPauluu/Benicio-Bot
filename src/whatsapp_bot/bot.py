@@ -13,6 +13,7 @@ from .config import Settings
 from .context import Context
 from .incoming import Identity, Incoming, parse_event, phone_variants
 from .registry import REGISTRY, Registry, load_commands
+from .roles import Role, allowed, describe, expand, from_values
 from .store import Store
 
 log = logging.getLogger(__name__)
@@ -83,21 +84,21 @@ class Bot:
             log.info("  -> ignored: stale (sent before the bot started)")
             return
         self.identity.learn(inc)
-        is_owner = self.identity.is_owner(inc)
+        roles = self.user_roles(inc)
 
         if inc.is_group:
             triggered = self.identity.mentions_bot(inc)
         else:
-            triggered = is_owner or self.settings.allow_dms_from_others
-        log.info("  -> owner=%s triggered=%s (bot ids %s, owner ids %s)", is_owner, triggered,
+            triggered = bool(roles) or self.settings.allow_dms_from_others
+        log.info("  -> roles=%s triggered=%s (bot ids %s, owner ids %s)", sorted(roles), triggered,
                  sorted(self.identity.bot_ids), sorted(self.identity.owner_ids))
         body = self.identity.strip_mentions(inc.text) if triggered else inc.text
 
-        ctx = Context(self, inc.chat, text=body, is_owner=is_owner, is_group=inc.is_group,
+        ctx = Context(self, inc.chat, text=body, roles=roles, is_group=inc.is_group,
                       triggered=triggered, incoming=inc, event=ev)
 
         for lst in self.registry.listeners:
-            if lst.owner_only and not is_owner:
+            if not allowed(roles, lst.roles):
                 continue
             try:
                 await lst.func(ctx)
@@ -107,12 +108,30 @@ class Bot:
         if triggered:
             await self.dispatch(ctx)
 
+    @staticmethod
+    def ids_of(inc: Incoming) -> set[str]:
+        """Every id the sender may be stored under (LID, phone and its 9th-digit variant)."""
+        ids = {inc.sender, inc.sender_alt} - {""}
+        for i in list(ids):
+            ids |= phone_variants(i)
+        return ids
+
+    def user_roles(self, inc: Incoming) -> frozenset[Role]:
+        ids = self.ids_of(inc)
+        roles = from_values(self.store.roles_of(ids))
+        if self.identity.is_owner(inc):
+            roles.add(Role.OWNER)
+        else:
+            self.store.link_ids(ids)  # remember LID <-> phone for people with roles
+        return expand(roles)
+
     async def dispatch(self, ctx: Context) -> None:
         words = ctx.text.split()
         cmd = self.registry.find(words[0].lstrip("/!")) if words else None
         if cmd is not None:
-            if cmd.owner_only and not ctx.is_owner:
-                return  # owner-only commands stay silent for everyone else
+            if not allowed(ctx.roles, cmd.roles):
+                await ctx.reply(f"🚫 Você não tem permissão para usar *{cmd.name}* (requer: {describe(cmd.roles)}).")
+                return
             if cmd.group_only and not ctx.is_group:
                 await ctx.reply("Esse comando só funciona em grupos.")
                 return
@@ -140,7 +159,8 @@ class Bot:
     # ---- scheduled payloads --------------------------------------------
     async def run_payload(self, chat: str, payload: str) -> None:
         """A scheduled payload is a command (e.g. 'bomdia') or plain text."""
-        ctx = Context(self, chat, text=payload, is_owner=True, is_group=chat.endswith("@g.us"), triggered=True)
+        ctx = Context(self, chat, text=payload, roles=expand({Role.OWNER}),
+                      is_group=chat.endswith("@g.us"), triggered=True)
         words = payload.split()
         if words and self.registry.find(words[0].lstrip("/!")):
             await self.dispatch(ctx)

@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any
 
 from neonize.utils.jid import build_jid
 
+from .roles import Role
+
 if TYPE_CHECKING:
     from .bot import Bot
     from .incoming import Incoming
@@ -24,11 +26,18 @@ class Context:
     text: str = ""                 # message text with the bot mention removed
     args: list[str] = field(default_factory=list)
     command: str | None = None
-    is_owner: bool = False
+    roles: frozenset[Role] = frozenset()   # already expanded (owner/admin include the others)
     is_group: bool = False
     triggered: bool = False        # bot was mentioned (group) or DM'd
     incoming: "Incoming | None" = None
     event: Any = None              # raw neonize MessageEv (None for scheduled runs)
+
+    @property
+    def is_owner(self) -> bool:
+        return Role.OWNER in self.roles
+
+    def has(self, role: Role) -> bool:
+        return role in self.roles
 
     @property
     def store(self):

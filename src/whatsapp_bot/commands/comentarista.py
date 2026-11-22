@@ -3,13 +3,14 @@
 from collections import defaultdict, deque
 
 from whatsapp_bot.registry import command, feature, listener
+from whatsapp_bot.roles import Role
 
 FEATURE = feature("comentarista", help="comenta a conversa a cada N mensagens")
 
 _buffers: dict[str, deque] = defaultdict(deque)
 
 
-@command("comentarista", help="liga/desliga o modo comentarista neste grupo", owner_only=True, group_only=True)
+@command("comentarista", help="liga/desliga o modo comentarista neste grupo", role=Role.ADMIN, group_only=True)
 async def toggle(ctx):
     on = not ctx.store.get_flag(ctx.chat, FEATURE.name)
     ctx.store.set_flag(ctx.chat, FEATURE.name, on)
