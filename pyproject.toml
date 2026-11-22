@@ -34,3 +34,15 @@ dev = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I", "UP", "SIM", "RUF"]
+ignore = ["RUF001"]  # Portuguese/emoji strings are intentional
+
+[tool.ruff.lint.isort]
+known-first-party = ["whatsapp_bot"]
+known-third-party = ["conftest"]

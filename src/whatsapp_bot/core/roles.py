@@ -65,5 +65,15 @@ def allowed(user_roles: Iterable[Role], required: Iterable[Role]) -> bool:
     return not required or bool(expand(user_roles) & required)
 
 
+def ordered(roles: Iterable[Role]) -> list[Role]:
+    """``roles`` in declaration order (owner first)."""
+    order = list(Role)
+    return sorted(roles, key=order.index)
+
+
 def describe(roles: Iterable[Role]) -> str:
-    return " ou ".join(LABELS[r] for r in sorted(roles, key=list(Role).index))
+    return " ou ".join(LABELS[r] for r in ordered(roles))
+
+
+def denied_message(what: str, required: Iterable[Role]) -> str:
+    return f"🚫 Você não tem permissão para usar *{what}* (requer: {describe(required)})."

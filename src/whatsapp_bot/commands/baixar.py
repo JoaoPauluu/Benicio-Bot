@@ -7,18 +7,19 @@
 from __future__ import annotations
 
 import logging
-import os
 import re
 import shutil
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from whatsapp_bot.aio import AIO, AIOError
-from whatsapp_bot.context import jid_from_str
-from whatsapp_bot.incoming import media_message
-from whatsapp_bot.registry import command, listener
-from whatsapp_bot.roles import Role, describe
+from whatsapp_bot.core.context import Context
+from whatsapp_bot.core.registry import command, listener
+from whatsapp_bot.core.roles import Role, denied_message
+from whatsapp_bot.core.store import atomic_write
+from whatsapp_bot.services.aio import AIO, AIOError
+from whatsapp_bot.whatsapp.incoming import media_message
+from whatsapp_bot.whatsapp.jid import jid_from_str
 
 log = logging.getLogger(__name__)
 
@@ -70,16 +71,16 @@ def parse_request(args: list[str]) -> tuple[Preset, list[str]]:
     return preset, list(dict.fromkeys(urls))  # dedupe, keep order
 
 
-def cookies_path(ctx) -> Path:
+def cookies_path(ctx: Context) -> Path:
     return ctx.settings.data_dir / "cookies.txt"
 
 
 @command("baixar", help="baixa vídeos/áudios de links e manda aqui", usage=USAGE, role=Role.MEDIA,
          aliases=("download", "baixe"))
-async def baixar(ctx):
+async def baixar(ctx: Context):
     if ctx.args and ctx.args[0].lower() in COOKIE_WORDS:
         if not ctx.is_owner:
-            await ctx.reply(f"🚫 Você não tem permissão para usar *baixar cookies* (requer: {describe({Role.OWNER})}).")
+            await ctx.reply(denied_message("baixar cookies", {Role.OWNER}))
             return
         await ctx.reply(COOKIES_PROMPT)
         return
@@ -93,16 +94,14 @@ async def baixar(ctx):
         ctx.bot.spawn(_download_and_send(ctx, url, preset))
 
 
-async def _download_and_send(ctx, url: str, preset: Preset) -> None:
+async def _download_and_send(ctx: Context, url: str, preset: Preset) -> None:
     aio = ctx.bot.aio
-    cookies = cookies_path(ctx)
     tmp_root = ctx.settings.data_dir / "tmp"
     tmp_root.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp(dir=tmp_root))
     job = None
     try:
-        job = await aio.run_ytdlp([url], preset.format, preset.quality, preset.bitrate,
-                                  cookies if cookies.exists() else None)
+        job = await aio.run_ytdlp([url], preset.format, preset.quality, preset.bitrate, cookies_path(ctx))
         if not job.get("files"):
             await ctx.reply(f"❌ Nada foi baixado de {url}.")
             return
@@ -121,7 +120,7 @@ async def _download_and_send(ctx, url: str, preset: Preset) -> None:
             await aio.delete_job(job["id"])
 
 
-async def _send_file(ctx, aio: AIO, path: Path, url: str) -> None:
+async def _send_file(ctx: Context, aio: AIO, path: Path, url: str) -> None:
     size_mb = path.stat().st_size / (1 << 20)
     if size_mb > ctx.settings.baixar_max_mb:
         expires = ctx.settings.baixar_share_expires
@@ -157,11 +156,11 @@ def looks_like_cookies(data: bytes) -> bool:
 
 
 @listener(role=Role.OWNER)
-async def receive_cookies(ctx):
+async def receive_cookies(ctx: Context):
     inc = ctx.incoming
     if inc is None or not inc.has_document or ctx.event is None:
         return
-    if inc.quoted_participant not in ctx.bot.identity.bot_ids or not inc.quoted_text.startswith(COOKIES_PROMPT):
+    if not ctx.bot.identity.is_bot(inc.quoted_participant) or not inc.quoted_text.startswith(COOKIES_PROMPT):
         return
     ctx.handled = True
     try:
@@ -173,9 +172,5 @@ async def receive_cookies(ctx):
     if not data or not looks_like_cookies(data):
         await ctx.reply("❌ Isso não parece um cookies.txt (formato Netscape). Nada foi alterado.")
         return
-    dest = cookies_path(ctx)
-    tmp = dest.with_suffix(".tmp")
-    tmp.write_bytes(data)
-    os.replace(tmp, dest)
-    os.chmod(dest, 0o600)
+    atomic_write(cookies_path(ctx), data, mode=0o600)
     await ctx.reply("✅ Cookies salvos. Todos os próximos *baixar* vão usar esse arquivo.")

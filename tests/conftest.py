@@ -3,10 +3,10 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from whatsapp_bot.bot import Bot
 from whatsapp_bot.config import Settings
-from whatsapp_bot.incoming import Incoming
-from whatsapp_bot.store import Store
+from whatsapp_bot.core.bot import Bot
+from whatsapp_bot.core.store import Store
+from whatsapp_bot.whatsapp.incoming import Incoming
 
 OWNER = "5511900000001"
 OWNER_LID = "99001"

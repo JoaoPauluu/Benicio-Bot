@@ -14,7 +14,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 
 if TYPE_CHECKING:
-    from .bot import Bot
+    from whatsapp_bot.core.bot import Bot
 
 log = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def describe(item: dict) -> str:
 
 
 class Scheduler:
-    def __init__(self, bot: "Bot"):
+    def __init__(self, bot: Bot):
         self.bot = bot
         self.tz = ZoneInfo(bot.settings.timezone)
         self._aps = AsyncIOScheduler(timezone=self.tz)
@@ -80,7 +80,7 @@ class Scheduler:
         self._aps.start()
         log.info("scheduler started with %d job(s)", len(self._aps.get_jobs()))
 
-    def trigger_for(self, item: dict):
+    def _trigger_for(self, item: dict):
         hour, minute = map(int, item["time"].split(":"))
         rule = parse_rule(item["rule"])
         if rule is None:
@@ -93,7 +93,7 @@ class Scheduler:
         return DateTrigger(run_date=when, timezone=self.tz)
 
     def _register(self, item: dict) -> bool:
-        trig = self.trigger_for(item)
+        trig = self._trigger_for(item)
         if trig is None:
             return False
         self._aps.add_job(self._fire, trig, args=[item], id=item["id"], replace_existing=True,
@@ -101,8 +101,7 @@ class Scheduler:
         return True
 
     def add(self, chat: str, hhmm: str, rule: str, payload: str) -> dict | None:
-        probe = {"time": hhmm, "rule": rule}
-        if self.trigger_for(probe) is None:
+        if self._trigger_for({"time": hhmm, "rule": rule}) is None:
             return None
         item = self.bot.store.add_schedule(chat, hhmm, rule, payload)
         self._register(item)

@@ -2,16 +2,17 @@
 
 import re
 
-from whatsapp_bot.incoming import phone_variants
-from whatsapp_bot.registry import command
-from whatsapp_bot.roles import GRANTABLE, LABELS, Role, describe, from_values, parse_role
+from whatsapp_bot.core.context import Context
+from whatsapp_bot.core.registry import command
+from whatsapp_bot.core.roles import GRANTABLE, LABELS, Role, describe, from_values, ordered, parse_role
+from whatsapp_bot.whatsapp.identity import phone_variants
 
 USAGE = "[dar|tirar <cargo> <@pessoa|número>]"
 GIVE = {"dar", "add", "adicionar", "give", "grant"}
 TAKE = {"tirar", "remover", "rm", "take", "remove", "revoke"}
 
 
-def _target(ctx, extra_args: list[str]) -> set[str]:
+def _target(ctx: Context, extra_args: list[str]) -> set[str]:
     """Who the command is about: a mention, a typed number, or the author of the quoted message."""
     inc = ctx.incoming
     if inc is not None:
@@ -22,17 +23,18 @@ def _target(ctx, extra_args: list[str]) -> set[str]:
         digits = re.sub(r"\D", "", arg)
         if len(digits) >= 8:
             return phone_variants(digits)
-    if inc is not None and inc.quoted_participant and inc.quoted_participant not in ctx.bot.identity.bot_ids:
+    if inc is not None and inc.quoted_participant and not ctx.bot.identity.is_bot(inc.quoted_participant):
         return {inc.quoted_participant}
     return set()
 
 
 def _choices() -> str:
-    return ", ".join(LABELS[r] for r in sorted(GRANTABLE, key=list(Role).index))
+    return ", ".join(LABELS[r] for r in ordered(GRANTABLE))
 
 
-@command("cargo", help="lista/dá/tira cargos (globais)", usage=USAGE, role=Role.OWNER, aliases=("cargos", "role", "roles"))
-async def cargo(ctx):
+@command("cargo", help="lista/dá/tira cargos (globais)", usage=USAGE, role=Role.OWNER,
+         aliases=("cargos", "role", "roles"))
+async def cargo(ctx: Context):
     if not ctx.args:
         holders = ctx.store.role_holders()
         if not holders:

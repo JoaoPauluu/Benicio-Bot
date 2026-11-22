@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 from conftest import GROUP
 
-from whatsapp_bot.scheduler import Scheduler, parse_agendar, parse_rule
+from whatsapp_bot.core.scheduler import Scheduler, parse_agendar, parse_rule
 
 
 def test_parse_agendar_defaults_to_daily():

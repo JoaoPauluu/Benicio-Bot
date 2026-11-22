@@ -8,16 +8,19 @@ from zoneinfo import ZoneInfo
 import httpx
 from bs4 import BeautifulSoup
 
-from whatsapp_bot.registry import command
+from whatsapp_bot.core.context import Context
+from whatsapp_bot.core.registry import command
 
 log = logging.getLogger(__name__)
 
-# pensador.com markup: each quote is <div class="thought-card"><p class="frase">..</p>..<span class="author-name">..</span>
+# pensador.com markup: each quote is
+#   <div class="thought-card"><p class="frase">..</p>..<span class="author-name">..</span>
 CARD_SELECTOR = ".thought-card"
 TEXT_SELECTOR = "p.frase"
 AUTHOR_SELECTOR = ".author-name"
 MAX_CHARS = 600
-HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                         "Chrome/130.0 Safari/537.36"}
 
 
 def parse_quotes(html: str) -> list[tuple[str, str]]:
@@ -57,7 +60,7 @@ async def fetch_bomdia(url: str, day: str) -> str | None:
 
 
 @command("bomdia", help="mensagem de bom dia do dia", aliases=("goodmorning",))
-async def bomdia(ctx):
+async def bomdia(ctx: Context):
     day = datetime.now(ZoneInfo(ctx.settings.timezone)).date().isoformat()
     msg = await fetch_bomdia(ctx.settings.bomdia_url, day)
     if msg is None:  # site down / layout changed: never send nothing

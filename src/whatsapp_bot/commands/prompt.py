@@ -1,18 +1,22 @@
-from whatsapp_bot.registry import command
-from whatsapp_bot.roles import Role
+"""Per-chat extra instructions for the AI."""
+
+from whatsapp_bot.core.context import Context
+from whatsapp_bot.core.registry import command
+from whatsapp_bot.core.roles import Role
+
+CLEAR = {"limpar", "clear"}
 
 
 @command("prompt", help="mostra/define/limpa o prompt extra da IA neste chat", usage="[texto|limpar]",
          role=Role.ADMIN)
-async def prompt(ctx):
+async def prompt(ctx: Context):
     if not ctx.args:
         current = ctx.store.get_prompt(ctx.chat)
         await ctx.reply(f"📝 Prompt deste chat:\n{current}" if current else "Este chat usa só o prompt base.")
         return
-    if [a.lower() for a in ctx.args] in (["limpar"], ["clear"]):
+    if len(ctx.args) == 1 and ctx.args[0].lower() in CLEAR:
         ctx.store.set_prompt(ctx.chat, "")
         await ctx.reply("📝 Prompt do chat removido.")
         return
-    text = ctx.text.split(None, 1)[1]  # keep original spacing/case
-    ctx.store.set_prompt(ctx.chat, text)
+    ctx.store.set_prompt(ctx.chat, ctx.rest)  # keep original spacing/case
     await ctx.reply("📝 Prompt do chat atualizado.")

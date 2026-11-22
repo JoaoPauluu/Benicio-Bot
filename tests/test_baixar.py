@@ -6,10 +6,10 @@ import httpx
 import pytest
 from conftest import BOT_LID, GROUP, OWNER, group_msg
 
-from whatsapp_bot.aio import AIO, AIOError
 from whatsapp_bot.commands.baixar import AUDIO, COOKIES_PROMPT, DEFAULT, HIGH, looks_like_cookies, parse_request
-from whatsapp_bot.incoming import Incoming
-from whatsapp_bot.registry import REGISTRY
+from whatsapp_bot.core.registry import REGISTRY
+from whatsapp_bot.services.aio import AIO, AIOError
+from whatsapp_bot.whatsapp.incoming import Incoming
 
 STRANGER = "5511900000009"
 COOKIES = b"# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t0\tSID\tabc\n"
@@ -227,7 +227,7 @@ async def test_cookies_rejected_for_non_owner_and_bad_files(bot, aio_server):
 
 
 def test_english_schedule_rules():
-    from whatsapp_bot.scheduler import parse_rule
+    from whatsapp_bot.core.scheduler import parse_rule
 
     assert parse_rule("daily").day_of_week == "*"
     assert parse_rule("weekdays").day_of_week == "mon-fri"
@@ -236,9 +236,9 @@ def test_english_schedule_rules():
 
 def test_parse_captioned_document_reply():
     from neonize.proto import Neonize_pb2 as p
-    from neonize.proto.waE2E.WAWebProtobufsE2E_pb2 import (ContextInfo, DocumentMessage, FutureProofMessage, Message)
+    from neonize.proto.waE2E.WAWebProtobufsE2E_pb2 import ContextInfo, DocumentMessage, FutureProofMessage, Message
 
-    from whatsapp_bot.incoming import parse_event
+    from whatsapp_bot.whatsapp.incoming import parse_event
 
     quoted = Message(conversation=COOKIES_PROMPT)
     doc = DocumentMessage(fileName="cookies.txt", caption="aqui",

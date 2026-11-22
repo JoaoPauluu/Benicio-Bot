@@ -91,7 +91,7 @@ The bot also sends stickers on its own. Gemini picks a meme-style GIF query from
 - **Commentator mode:** a 1 in 10 chance of text plus a sticker, and a 1 in 5 chance of a sticker instead
   of the text. If no GIF is found, it sends the text.
 
-The chances are constants in `src/whatsapp_bot/stickers.py`.
+The chances are constants in `src/whatsapp_bot/services/stickers.py`.
 
 ### Roles
 
@@ -115,8 +115,8 @@ Anyone who tries a command without the required role is told they are not allowe
 Create `src/whatsapp_bot/commands/<anything>.py`. It is auto-discovered:
 
 ```python
-from whatsapp_bot.registry import command, feature, listener
-from whatsapp_bot.roles import Role
+from whatsapp_bot.core.registry import command, feature, listener
+from whatsapp_bot.core.roles import Role
 
 @command("dado", help="rola um dado", usage="[lados]")
 async def dado(ctx):
@@ -138,12 +138,23 @@ async def watcher(ctx):
 `ctx` gives you:
 
 - `reply()` (native quoted reply) and `send()`
-- `args`, `text`, `roles` / `has(Role.X)` / `is_owner`, `is_group`, `chat`, `incoming`
-- `store` (flags, prompts, schedules), `ai.ask()`, `settings`, `bot`
+- `args`, `rest` (text after the command, original case), `text`, `roles` / `is_owner`, `is_group`, `chat`, `incoming`
+- `store` (flags, prompts, schedules), `ai.ask()`, `chat_instructions()`, `settings`, `bot`
 
-Owner-only special actions on every owner message go in `commands/dono.py`.
+Owner-only special actions on every owner message go in `commands/dono.py` (a commented template).
 
-To add a new role, add it to `Role` and `LABELS` in `src/whatsapp_bot/roles.py`. The owner and admins get it automatically, and `cargo` can grant it.
+## Layout
+
+```
+src/whatsapp_bot/
+  main.py, config.py   entry point and .env settings
+  core/                router (bot), context, registry, roles, store, scheduler
+  whatsapp/            neonize message parsing, JIDs, bot/owner identity
+  services/            Gemini (ai), free-form AI chat (conversation), AIO Toolkit, KLIPY, stickers
+  commands/            one module per chat command, auto-discovered
+```
+
+To add a new role, add it to `Role` and `LABELS` in `src/whatsapp_bot/core/roles.py`. The owner and admins get it automatically, and `cargo` can grant it.
 
 ## Tests
 

@@ -2,11 +2,11 @@ import httpx
 import pytest
 from conftest import group_msg
 
-from whatsapp_bot import bot as bot_module
-from whatsapp_bot.ai import clean_query
 from whatsapp_bot.commands import comentarista
-from whatsapp_bot.klipy import Klipy, media_url
-from whatsapp_bot.stickers import without_meme_terms
+from whatsapp_bot.services import conversation
+from whatsapp_bot.services.ai import clean_query
+from whatsapp_bot.services.klipy import Klipy, media_url
+from whatsapp_bot.services.stickers import without_meme_terms
 
 GIF = b"GIF89a-fake"
 
@@ -95,8 +95,8 @@ async def test_figurinha_usage_and_missing_key(bot):
 
 async def test_meme_terms_dropped_when_nothing_found(bot, klipy):
     bot.ai.gif_answer = "gato bruh meme"
-    from whatsapp_bot.stickers import contextual_sticker
-    from whatsapp_bot.context import Context
+    from whatsapp_bot.core.context import Context
+    from whatsapp_bot.services.stickers import contextual_sticker
     assert await contextual_sticker(Context(bot, "x@g.us"), "oi")
     assert klipy.queries == ["gato bruh meme", "gato"]
 
@@ -105,14 +105,14 @@ async def test_meme_terms_dropped_when_nothing_found(bot, klipy):
 
 async def test_ai_reply_sometimes_adds_sticker(bot, klipy, monkeypatch):
     bot.ai.gif_answer = "gato"
-    monkeypatch.setattr(bot_module.random, "random", lambda: 0.0)
+    monkeypatch.setattr(conversation.random, "random", lambda: 0.0)
     await bot.handle(group_msg("ia qual a boa"))
     assert texts(bot) == ["AI:Ana: qual a boa"] and len(stickers(bot)) == 1
     assert bot.ai.gif_queries[0][0] == "Ana: qual a boa"
 
 
 async def test_ai_reply_usually_text_only(bot, klipy, monkeypatch):
-    monkeypatch.setattr(bot_module.random, "random", lambda: 0.99)
+    monkeypatch.setattr(conversation.random, "random", lambda: 0.99)
     await bot.handle(group_msg("qual a boa"))
     assert texts(bot) == ["AI:Ana: qual a boa"] and not stickers(bot) and not bot.ai.gif_queries
 

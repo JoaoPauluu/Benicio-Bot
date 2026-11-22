@@ -2,8 +2,9 @@ import time
 
 from conftest import BOT_LID, GROUP, OWNER, OWNER_LID, dm, group_msg
 
-from whatsapp_bot.incoming import Identity, Incoming, parse_event
-from whatsapp_bot.registry import REGISTRY
+from whatsapp_bot.core.registry import REGISTRY
+from whatsapp_bot.whatsapp.identity import Identity
+from whatsapp_bot.whatsapp.incoming import Incoming, parse_event
 
 STRANGER = "5511900000009"
 
@@ -137,7 +138,7 @@ def test_brazilian_ninth_digit_owner_matches_both_forms():
 
 
 def test_phone_variants_leaves_other_numbers_alone():
-    from whatsapp_bot.incoming import phone_variants
+    from whatsapp_bot.whatsapp.identity import phone_variants
 
     assert phone_variants("5511987654321") == {"5511987654321", "551187654321"}
     assert phone_variants("551187654321") == {"5511987654321", "551187654321"}
@@ -151,7 +152,7 @@ STRANGER_LID = "99009"
 
 
 def test_role_expansion():
-    from whatsapp_bot.roles import Role, allowed, expand
+    from whatsapp_bot.core.roles import Role, allowed, expand
 
     assert expand({Role.OWNER}) == frozenset(Role)
     assert expand({Role.ADMIN}) == frozenset(Role) - {Role.OWNER}
@@ -218,7 +219,7 @@ async def test_cargo_errors_and_listing(bot):
 
 
 def test_roles_persist(tmp_path):
-    from whatsapp_bot.store import Store
+    from whatsapp_bot.core.store import Store
 
     s = Store(tmp_path / "state.json")
     s.grant_role({"111", "222"}, "admin")

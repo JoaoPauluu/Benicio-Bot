@@ -3,11 +3,11 @@
 Add a new feature by creating a module in ``whatsapp_bot/commands/`` and using
 the decorators below. Every module in that package is imported automatically.
 
-    from whatsapp_bot.registry import command
-    from whatsapp_bot.roles import Role
+    from whatsapp_bot.core.registry import command
+    from whatsapp_bot.core.roles import Role
 
     @command("foo", help="faz foo", role=Role.ADMIN)   # role is optional
-    async def foo(ctx):
+    async def foo(ctx: Context):
         await ctx.reply("foo!")
 """
 
@@ -19,12 +19,14 @@ from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from .roles import Role, normalize
+from whatsapp_bot.core.roles import Role, normalize
 
 if TYPE_CHECKING:
-    from .context import Context
+    from whatsapp_bot.core.context import Context
 
 Handler = Callable[["Context"], Awaitable[None]]
+
+COMMAND_PREFIXES = "/!"  # optional: "/ajuda" and "!ajuda" work like "ajuda"
 
 
 @dataclass
@@ -61,7 +63,14 @@ class Registry:
     features: dict[str, Feature] = field(default_factory=dict)
 
     def find(self, word: str) -> Command | None:
-        return self.commands.get(word.lower())
+        return self.commands.get(word.lstrip(COMMAND_PREFIXES).lower())
+
+    def match(self, text: str) -> tuple[Command | None, list[str]]:
+        """'baixar alta link' -> (baixar command, ['alta', 'link']); (None, words) when not a command."""
+        words = text.split()
+        if not words:
+            return None, []
+        return self.find(words[0]), words[1:]
 
     def unique_commands(self) -> list[Command]:
         seen: dict[str, Command] = {}
@@ -119,7 +128,7 @@ _loaded = False
 def load_commands() -> Registry:
     global _loaded
     if not _loaded:
-        from . import commands
+        from whatsapp_bot import commands
 
         for mod in pkgutil.iter_modules(commands.__path__):
             if not mod.name.startswith("_"):

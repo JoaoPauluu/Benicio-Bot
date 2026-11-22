@@ -1,23 +1,15 @@
 """Owner hooks: special actions that run on *every* message the owner sends.
 
-Template — add your own reactions here. Runs in DMs and groups, mentioned or not.
+Template — nothing is registered by default. Runs in DMs and groups, mentioned
+or not. Uncomment and adapt, e.g.:
+
+    from whatsapp_bot.core.context import Context
+    from whatsapp_bot.core.registry import listener
+    from whatsapp_bot.core.roles import Role
+
+    @listener(role=Role.OWNER)
+    async def owner_seen(ctx: Context):
+        if ctx.incoming and ctx.incoming.text == "!ping":
+            await ctx.reply("pong")
+            ctx.handled = True   # skip command dispatch / AI for this message
 """
-
-import logging
-
-from whatsapp_bot.registry import command, listener
-from whatsapp_bot.roles import Role
-
-log = logging.getLogger(__name__)
-
-
-@listener(role=Role.OWNER)
-async def owner_seen(ctx):
-    # Example hook point. e.g.:
-    # if ctx.incoming.text == "!ping": await ctx.reply("pong")
-    log.debug("owner message in %s: %s", ctx.chat, ctx.incoming.text if ctx.incoming else "")
-
-
-@command("ping", help="testa se o bot está vivo", role=Role.ADMIN)
-async def ping(ctx):
-    await ctx.reply("pong 🏓")

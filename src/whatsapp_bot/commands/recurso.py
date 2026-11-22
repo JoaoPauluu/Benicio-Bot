@@ -1,9 +1,8 @@
 """Generic per-chat on/off switches for any registered feature."""
 
-from whatsapp_bot.registry import REGISTRY, command, feature
-from whatsapp_bot.roles import Role
-
-feature("ia", help="responde com IA quando mencionado sem comando", default=True)
+from whatsapp_bot.core.context import Context
+from whatsapp_bot.core.registry import command
+from whatsapp_bot.core.roles import Role
 
 ON = {"on", "ligar", "liga", "sim", "1"}
 OFF = {"off", "desligar", "desliga", "nao", "não", "0"}
@@ -11,8 +10,8 @@ OFF = {"off", "desligar", "desliga", "nao", "não", "0"}
 
 @command("recurso", help="liga/desliga recursos neste chat", usage="[nome on|off]", role=Role.ADMIN,
          aliases=("recursos", "feature", "features"))
-async def recurso(ctx):
-    feats = REGISTRY.features
+async def recurso(ctx: Context):
+    feats = ctx.bot.registry.features
     if not ctx.args:
         lines = ["⚙️ *Recursos neste chat*"]
         for f in feats.values():

@@ -1,13 +1,16 @@
-from whatsapp_bot.registry import command
-from whatsapp_bot.roles import Role
-from whatsapp_bot.scheduler import describe, parse_agendar
+"""Scheduled messages/commands for the current chat."""
+
+from whatsapp_bot.core.context import Context
+from whatsapp_bot.core.registry import command
+from whatsapp_bot.core.roles import Role
+from whatsapp_bot.core.scheduler import describe, parse_agendar
 
 USAGE = "HH:MM [diario|uteis|fds|seg,qua,..|AAAA-MM-DD|DD/MM/AAAA] <comando ou texto>"
 
 
 @command("agendar", help="agenda uma mensagem/comando neste chat", usage=USAGE, role=Role.ADMIN,
          aliases=("schedule",))
-async def agendar(ctx):
+async def agendar(ctx: Context):
     try:
         hhmm, rule, payload = parse_agendar(ctx.args)
     except ValueError as e:
@@ -22,7 +25,7 @@ async def agendar(ctx):
 
 @command("agendamentos", help="lista os agendamentos deste chat", role=Role.ADMIN,
          aliases=("schedules",))
-async def agendamentos(ctx):
+async def agendamentos(ctx: Context):
     items = ctx.store.schedules(ctx.chat)
     if not items:
         await ctx.reply("Nenhum agendamento neste chat.")
@@ -32,7 +35,7 @@ async def agendamentos(ctx):
 
 @command("desagendar", help="remove um agendamento", usage="<id>", role=Role.ADMIN,
          aliases=("unschedule",))
-async def desagendar(ctx):
+async def desagendar(ctx: Context):
     if not ctx.args:
         await ctx.reply("Uso: desagendar <id> (veja os ids em *agendamentos*)")
         return

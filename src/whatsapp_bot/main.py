@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 
 from neonize.aioze.client import NewAClient
 from neonize.aioze.events import ConnectedEv, MessageEv, PairStatusEv
 from neonize.events import UndecryptableMessageEv  # not re-exported by aioze; same event registry
 
-from .bot import Bot
-from .config import load_settings
-from .scheduler import Scheduler
+from whatsapp_bot.config import load_settings
+from whatsapp_bot.core.bot import Bot
+from whatsapp_bot.core.scheduler import Scheduler
 
 log = logging.getLogger("whatsapp_bot")
 
@@ -53,10 +54,8 @@ async def amain() -> None:
 
 def run() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(amain())
-    except KeyboardInterrupt:
-        pass
 
 
 if __name__ == "__main__":

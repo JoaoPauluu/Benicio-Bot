@@ -7,10 +7,10 @@ import random
 import re
 from typing import TYPE_CHECKING
 
-from .klipy import KlipyError
+from whatsapp_bot.services.klipy import KlipyError
 
 if TYPE_CHECKING:
-    from .context import Context
+    from whatsapp_bot.core.context import Context
 
 log = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ def without_meme_terms(query: str) -> str:
     return " ".join(_MEME_RE.sub(" ", query).split())
 
 
-async def send_gif_sticker(ctx: "Context", query: str) -> bool:
+async def send_gif_sticker(ctx: Context, query: str) -> bool:
     """Search ``query`` on KLIPY, send a random result as a sticker. False if nothing found or on error."""
     klipy = ctx.bot.klipy
     if not klipy.enabled or not query.strip():
@@ -48,7 +48,7 @@ async def send_gif_sticker(ctx: "Context", query: str) -> bool:
     return False
 
 
-async def contextual_sticker(ctx: "Context", contents: str, *extra: str) -> bool:
+async def contextual_sticker(ctx: Context, contents: str, *extra: str) -> bool:
     """Let Gemini pick a GIF query for ``contents`` and send it as a sticker. Silent on failure."""
     if not ctx.bot.klipy.enabled:
         return False

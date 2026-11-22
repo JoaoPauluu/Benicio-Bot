@@ -13,6 +13,9 @@ from dotenv import load_dotenv
 ROOT = Path(os.getenv("BOT_HOME") or Path(__file__).resolve().parents[2])
 
 
+DEFAULT_AIO_URL = "http://localhost:8765"
+
+
 def _bool(value: str | None, default: bool = False) -> bool:
     if value is None or value == "":
         return default
@@ -38,13 +41,14 @@ class Settings:
     allow_dms_from_others: bool
     data_dir: Path
     prompts_dir: Path
-    aio_base_url: str = "http://localhost:8765"
+    aio_base_url: str = DEFAULT_AIO_URL
     baixar_timeout: float = 1800.0      # seconds
     baixar_max_mb: float = 100.0        # bigger files go to a share link instead
     baixar_share_expires: str = "1d"
     klipy_api_key: str = ""
     klipy_locale: str = "br"
     klipy_content_filter: str = "low"
+    sticker_pack: str = "Benício"          # author/pack name shown on stickers
 
 
 def load_settings(env_file: Path | None = None) -> Settings:
@@ -62,11 +66,12 @@ def load_settings(env_file: Path | None = None) -> Settings:
         allow_dms_from_others=_bool(os.getenv("ALLOW_DMS_FROM_OTHERS"), False),
         data_dir=data_dir,
         prompts_dir=Path(os.getenv("PROMPTS_DIR", ROOT / "prompts")),
-        aio_base_url=os.getenv("AIO_BASE_URL", "http://localhost:8765").rstrip("/"),
+        aio_base_url=os.getenv("AIO_BASE_URL", DEFAULT_AIO_URL).rstrip("/"),
         baixar_timeout=parse_duration(os.getenv("BAIXAR_TIMEOUT", "30m")),
         baixar_max_mb=float(os.getenv("BAIXAR_MAX_MB", "100")),
-        baixar_share_expires=os.getenv("BAIXAR_SHARE_EXPIRES", "1d"),
+        baixar_share_expires=os.getenv("BAIXAR_SHARE_EXPIRES", Settings.baixar_share_expires),
         klipy_api_key=os.getenv("KLIPY_API_KEY", "").strip(),
-        klipy_locale=os.getenv("KLIPY_LOCALE", "br").strip(),
-        klipy_content_filter=os.getenv("KLIPY_CONTENT_FILTER", "low").strip().lower(),
+        klipy_locale=os.getenv("KLIPY_LOCALE", Settings.klipy_locale).strip(),
+        klipy_content_filter=os.getenv("KLIPY_CONTENT_FILTER", Settings.klipy_content_filter).strip().lower(),
+        sticker_pack=os.getenv("STICKER_PACK", Settings.sticker_pack).strip(),
     )

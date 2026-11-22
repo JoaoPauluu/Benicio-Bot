@@ -4,21 +4,27 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import random
 import time
 from collections.abc import Coroutine
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .ai import AI
-from .aio import AIO
-from .config import Settings
-from .context import Context
-from .incoming import Identity, Incoming, parse_event, phone_variants
-from .klipy import Klipy
-from .registry import REGISTRY, Registry, load_commands
-from .roles import Role, allowed, describe, expand, from_values
-from .stickers import AI_STICKER_CHANCE, contextual_sticker
-from .store import Store
+from neonize.utils.jid import build_jid
+
+from whatsapp_bot.config import Settings
+from whatsapp_bot.core.context import Context
+from whatsapp_bot.core.registry import Registry, load_commands
+from whatsapp_bot.core.roles import Role, allowed, denied_message, expand, from_values
+from whatsapp_bot.core.store import Store
+from whatsapp_bot.services.ai import AI
+from whatsapp_bot.services.aio import AIO
+from whatsapp_bot.services.conversation import AI_FEATURE, chat_with_ai
+from whatsapp_bot.services.klipy import Klipy
+from whatsapp_bot.whatsapp.identity import Identity, phone_variants, sender_ids
+from whatsapp_bot.whatsapp.incoming import Incoming, parse_event
+from whatsapp_bot.whatsapp.jid import is_group_jid
+
+if TYPE_CHECKING:
+    from whatsapp_bot.core.scheduler import Scheduler
 
 log = logging.getLogger(__name__)
 
@@ -37,7 +43,7 @@ class Bot:
         self.klipy = klipy or Klipy(settings.klipy_api_key, settings.klipy_locale, settings.klipy_content_filter)
         self.identity = Identity(settings.owner_number)
         self.started_at = time.time()
-        self.scheduler = None  # set by main
+        self.scheduler: Scheduler | None = None  # set by main
         self._tasks: set[asyncio.Task] = set()
 
     # ---- lifecycle -----------------------------------------------------
@@ -45,8 +51,6 @@ class Bot:
         me = await self.client.get_me()
         self.identity.set_bot(me.JID.User, me.LID.User)
         log.info("connected as %s (lid %s)", me.JID.User, me.LID.User or "?")
-        from neonize.utils.jid import build_jid
-
         for number in phone_variants(self.settings.owner_number):
             try:
                 lid = await self.client.get_lid_from_pn(build_jid(number))
@@ -69,6 +73,7 @@ class Bot:
             log.error("background task failed", exc_info=task.exception())
 
     async def drain(self) -> None:
+        """Wait for every background task (used by tests)."""
         while self._tasks:
             await asyncio.gather(*list(self._tasks), return_exceptions=True)
 
@@ -100,8 +105,7 @@ class Bot:
                  sorted(self.identity.bot_ids), sorted(self.identity.owner_ids))
         body = self.identity.strip_mentions(inc.text) if triggered else inc.text
 
-        ctx = Context(self, inc.chat, text=body, roles=roles, is_group=inc.is_group,
-                      triggered=triggered, incoming=inc, event=ev)
+        ctx = Context(self, inc.chat, text=body, roles=roles, is_group=inc.is_group, incoming=inc, event=ev)
 
         for lst in self.registry.listeners:
             if not allowed(roles, lst.roles):
@@ -114,16 +118,8 @@ class Bot:
         if triggered and not ctx.handled:
             await self.dispatch(ctx)
 
-    @staticmethod
-    def ids_of(inc: Incoming) -> set[str]:
-        """Every id the sender may be stored under (LID, phone and its 9th-digit variant)."""
-        ids = {inc.sender, inc.sender_alt} - {""}
-        for i in list(ids):
-            ids |= phone_variants(i)
-        return ids
-
     def user_roles(self, inc: Incoming) -> frozenset[Role]:
-        ids = self.ids_of(inc)
+        ids = sender_ids(inc)
         roles = from_values(self.store.roles_of(ids))
         if self.identity.is_owner(inc):
             roles.add(Role.OWNER)
@@ -132,46 +128,29 @@ class Bot:
         return expand(roles)
 
     async def dispatch(self, ctx: Context) -> None:
-        words = ctx.text.split()
-        cmd = self.registry.find(words[0].lstrip("/!")) if words else None
+        cmd, args = self.registry.match(ctx.text)
         if cmd is not None:
             if not allowed(ctx.roles, cmd.roles):
-                await ctx.reply(f"🚫 Você não tem permissão para usar *{cmd.name}* (requer: {describe(cmd.roles)}).")
+                await ctx.reply(denied_message(cmd.name, cmd.roles))
                 return
             if cmd.group_only and not ctx.is_group:
                 await ctx.reply("Esse comando só funciona em grupos.")
                 return
-            ctx.command, ctx.args = cmd.name, words[1:]
+            ctx.args = args
             await cmd.func(ctx)
             return
         if not ctx.text:
             await ctx.reply("Oi! Me mande *ajuda* para ver os comandos.")
             return
-        if not self.store.get_flag(ctx.chat, "ia", default=True):
-            return
-        await self.chat_with_ai(ctx)
-
-    async def chat_with_ai(self, ctx: Context) -> None:
-        where = "um grupo do WhatsApp" if ctx.is_group else "uma conversa privada no WhatsApp"
-        parts = []
-        if ctx.incoming and ctx.incoming.quoted_text:
-            parts.append(f"(Em resposta a: \"{ctx.incoming.quoted_text}\")")
-        parts.append(f"{ctx.sender_name}: {ctx.text}")
-        extra = [f"Você está em {where}."]
-        if prompt := self.store.get_prompt(ctx.chat):
-            extra.append(f"Instruções específicas deste chat:\n{prompt}")
-        contents = "\n".join(parts)
-        await ctx.reply(await self.ai.ask(contents, *extra))
-        if random.random() < AI_STICKER_CHANCE:
-            await contextual_sticker(ctx, contents, *extra)
+        if self.store.get_flag(ctx.chat, AI_FEATURE.name, AI_FEATURE.default):
+            await chat_with_ai(ctx)
 
     # ---- scheduled payloads --------------------------------------------
     async def run_payload(self, chat: str, payload: str) -> None:
-        """A scheduled payload is a command (e.g. 'bomdia') or plain text."""
-        ctx = Context(self, chat, text=payload, roles=expand({Role.OWNER}),
-                      is_group=chat.endswith("@g.us"), triggered=True)
-        words = payload.split()
-        if words and self.registry.find(words[0].lstrip("/!")):
+        """A scheduled payload is a command (e.g. 'bomdia') or plain text. Runs with owner rights."""
+        ctx = Context(self, chat, text=payload, roles=expand({Role.OWNER}), is_group=is_group_jid(chat))
+        cmd, _ = self.registry.match(payload)
+        if cmd is not None:
             await self.dispatch(ctx)
         else:
             await ctx.send(payload)

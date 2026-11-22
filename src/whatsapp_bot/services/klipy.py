@@ -47,9 +47,17 @@ class Klipy:
     def enabled(self) -> bool:
         return bool(self.api_key)
 
-    def _client(self) -> httpx.AsyncClient:
-        return httpx.AsyncClient(timeout=httpx.Timeout(30, connect=10), transport=self._transport,
-                                 follow_redirects=True)
+    async def _get(self, url: str, params: dict | None = None, what: str = "") -> httpx.Response:
+        """GET ``url``; network failures and HTTP errors become KlipyError."""
+        async with httpx.AsyncClient(timeout=httpx.Timeout(30, connect=10), transport=self._transport,
+                                     follow_redirects=True) as http:
+            try:
+                resp = await http.get(url, params=params)
+            except httpx.HTTPError as e:
+                raise KlipyError(f"falha de rede: {type(e).__name__}") from e
+        if resp.status_code >= 400:
+            raise KlipyError(f"HTTP {resp.status_code}{what}")
+        return resp
 
     async def search(self, q: str, per_page: int = 24) -> list[str]:
         """Media urls of the GIFs matching ``q`` (may be empty). Raises KlipyError on HTTP errors."""
@@ -58,13 +66,7 @@ class Klipy:
         params = {"q": q, "page": 1, "per_page": max(8, min(per_page, 50)), "locale": self.locale}
         if self.content_filter:
             params["content_filter"] = self.content_filter
-        async with self._client() as http:
-            try:
-                resp = await http.get(f"{self.base_url}/api/v1/{self.api_key}/gifs/search", params=params)
-            except httpx.HTTPError as e:
-                raise KlipyError(f"falha de rede: {type(e).__name__}") from e
-        if resp.status_code >= 400:
-            raise KlipyError(f"HTTP {resp.status_code}")
+        resp = await self._get(f"{self.base_url}/api/v1/{self.api_key}/gifs/search", params)
         try:
             body = resp.json()
         except ValueError as e:
@@ -76,11 +78,4 @@ class Klipy:
         return [url for item in items if isinstance(item, dict) and (url := media_url(item))]
 
     async def download(self, url: str) -> bytes:
-        async with self._client() as http:
-            try:
-                resp = await http.get(url)
-            except httpx.HTTPError as e:
-                raise KlipyError(f"falha de rede: {type(e).__name__}") from e
-        if resp.status_code >= 400:
-            raise KlipyError(f"HTTP {resp.status_code} ao baixar o gif")
-        return resp.content
+        return (await self._get(url, what=" ao baixar o gif")).content

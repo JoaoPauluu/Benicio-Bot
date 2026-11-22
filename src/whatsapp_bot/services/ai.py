@@ -9,7 +9,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 
-from .config import Settings
+from whatsapp_bot.config import Settings
 
 log = logging.getLogger(__name__)
 
