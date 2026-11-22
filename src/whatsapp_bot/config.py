@@ -19,6 +19,14 @@ def _bool(value: str | None, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "sim", "on"}
 
 
+def parse_duration(value: str) -> float:
+    """'90s' / '30m' / '1h' / '120' -> seconds."""
+    m = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*([smh]?)\s*", value.lower())
+    if not m:
+        raise ValueError(f"invalid duration: {value!r}")
+    return float(m.group(1)) * {"": 1, "s": 1, "m": 60, "h": 3600}[m.group(2)]
+
+
 @dataclass(frozen=True)
 class Settings:
     gemini_api_key: str
@@ -30,6 +38,10 @@ class Settings:
     allow_dms_from_others: bool
     data_dir: Path
     prompts_dir: Path
+    aio_base_url: str = "http://localhost:8765"
+    baixar_timeout: float = 1800.0      # seconds
+    baixar_max_mb: float = 100.0        # bigger files go to a share link instead
+    baixar_share_expires: str = "1d"
 
 
 def load_settings(env_file: Path | None = None) -> Settings:
@@ -47,4 +59,8 @@ def load_settings(env_file: Path | None = None) -> Settings:
         allow_dms_from_others=_bool(os.getenv("ALLOW_DMS_FROM_OTHERS"), False),
         data_dir=data_dir,
         prompts_dir=Path(os.getenv("PROMPTS_DIR", ROOT / "prompts")),
+        aio_base_url=os.getenv("AIO_BASE_URL", "http://localhost:8765").rstrip("/"),
+        baixar_timeout=parse_duration(os.getenv("BAIXAR_TIMEOUT", "30m")),
+        baixar_max_mb=float(os.getenv("BAIXAR_MAX_MB", "100")),
+        baixar_share_expires=os.getenv("BAIXAR_SHARE_EXPIRES", "1d"),
     )

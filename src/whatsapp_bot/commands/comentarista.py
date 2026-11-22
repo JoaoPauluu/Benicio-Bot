@@ -10,7 +10,8 @@ FEATURE = feature("comentarista", help="comenta a conversa a cada N mensagens")
 _buffers: dict[str, deque] = defaultdict(deque)
 
 
-@command("comentarista", help="liga/desliga o modo comentarista neste grupo", role=Role.ADMIN, group_only=True)
+@command("comentarista", help="liga/desliga o modo comentarista neste grupo", role=Role.ADMIN, group_only=True,
+         aliases=("commentator",))
 async def toggle(ctx):
     on = not ctx.store.get_flag(ctx.chat, FEATURE.name)
     ctx.store.set_flag(ctx.chat, FEATURE.name, on)
@@ -26,8 +27,9 @@ async def count_messages(ctx):
         return
     if not ctx.store.get_flag(ctx.chat, FEATURE.name):
         return
-    if ctx.command == "comentarista" or ctx.text.split()[:1] == ["comentarista"]:
-        return
+    words = ctx.text.split()
+    if words and (cmd := ctx.bot.registry.find(words[0].lstrip("/!"))) and cmd.func is toggle:
+        return  # the toggle command itself (any alias) doesn't count as conversation
     buf = _buffers[ctx.chat]
     buf.append(f"{inc.sender_name}: {inc.text}")
     n = ctx.settings.comentarista_interval

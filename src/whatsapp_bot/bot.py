@@ -9,6 +9,7 @@ from collections.abc import Coroutine
 from typing import Any
 
 from .ai import AI
+from .aio import AIO
 from .config import Settings
 from .context import Context
 from .incoming import Identity, Incoming, parse_event, phone_variants
@@ -23,12 +24,13 @@ STALE_SECONDS = 60  # ignore messages older than this when (re)connecting
 
 class Bot:
     def __init__(self, settings: Settings, client: Any, ai: AI | None = None, store: Store | None = None,
-                 registry: Registry | None = None):
+                 registry: Registry | None = None, aio: AIO | None = None):
         self.settings = settings
         self.client = client
         self.ai = ai or AI(settings)
         self.store = store or Store(settings.data_dir / "state.json")
         self.registry = registry or load_commands()
+        self.aio = aio or AIO(settings.aio_base_url, settings.baixar_timeout)
         self.identity = Identity(settings.owner_number)
         self.started_at = time.time()
         self.scheduler = None  # set by main
@@ -105,7 +107,7 @@ class Bot:
             except Exception:
                 log.exception("listener %s failed", lst.name)
 
-        if triggered:
+        if triggered and not ctx.handled:
             await self.dispatch(ctx)
 
     @staticmethod

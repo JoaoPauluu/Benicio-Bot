@@ -19,8 +19,11 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 WEEKDAYS = {"seg": "mon", "ter": "tue", "qua": "wed", "qui": "thu", "sex": "fri",
-            "sab": "sat", "sáb": "sat", "dom": "sun"}
-SHORTCUTS = {"diario": "*", "diário": "*", "todo": "*", "uteis": "mon-fri", "úteis": "mon-fri", "fds": "sat,sun"}
+            "sab": "sat", "sáb": "sat", "dom": "sun",
+            **{d: d for d in ("mon", "tue", "wed", "thu", "fri", "sat", "sun")}}
+SHORTCUTS = {"diario": "*", "diário": "*", "todo": "*", "daily": "*",
+             "uteis": "mon-fri", "úteis": "mon-fri", "weekdays": "mon-fri",
+             "fds": "sat,sun", "weekend": "sat,sun", "weekends": "sat,sun"}
 TIME_RE = re.compile(r"^([01]?\d|2[0-3])[:h]([0-5]\d)$")
 
 

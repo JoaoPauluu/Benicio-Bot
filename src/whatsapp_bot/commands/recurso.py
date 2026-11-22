@@ -10,7 +10,7 @@ OFF = {"off", "desligar", "desliga", "nao", "não", "0"}
 
 
 @command("recurso", help="liga/desliga recursos neste chat", usage="[nome on|off]", role=Role.ADMIN,
-         aliases=("recursos",))
+         aliases=("recursos", "feature", "features"))
 async def recurso(ctx):
     feats = REGISTRY.features
     if not ctx.args:

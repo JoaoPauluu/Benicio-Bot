@@ -9,7 +9,7 @@ async def prompt(ctx):
         current = ctx.store.get_prompt(ctx.chat)
         await ctx.reply(f"📝 Prompt deste chat:\n{current}" if current else "Este chat usa só o prompt base.")
         return
-    if ctx.args == ["limpar"]:
+    if [a.lower() for a in ctx.args] in (["limpar"], ["clear"]):
         ctx.store.set_prompt(ctx.chat, "")
         await ctx.reply("📝 Prompt do chat removido.")
         return

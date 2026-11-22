@@ -3,7 +3,8 @@ services:
     image: ghcr.io/joaopauluu/benicio-bot:latest
     container_name: benicio-bot
     restart: unless-stopped
-    env_file: .env            # GEMINI_API_KEY, GEMINI_MODEL, OWNER_NUMBER, ...
+    env_file: .env            # GEMINI_API_KEY, GEMINI_MODEL, OWNER_NUMBER, AIO_BASE_URL, ...
+    # For `baixar`: join the AIO Toolkit's docker network and set AIO_BASE_URL=http://aio-toolkit:8080
     tty: true                 # renders the login QR code nicely in `docker compose logs`
     volumes:
       - benicio-data:/app/data   # WhatsApp session + schedules: keep it or you must re-scan the QR

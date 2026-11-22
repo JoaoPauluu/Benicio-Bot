@@ -29,6 +29,8 @@ class Incoming:
     mentioned: set[str] = field(default_factory=set)
     quoted_participant: str = ""
     quoted_text: str = ""
+    has_document: bool = False
+    document_name: str = ""
     timestamp: float = field(default_factory=time.time)
 
 
@@ -38,9 +40,17 @@ def _timestamp(raw: int) -> float:
     return raw / 1000 if raw > 10**11 else float(raw)  # ms or s
 
 
+def media_message(msg):
+    """Documents with a caption arrive wrapped in documentWithCaptionMessage; unwrap them."""
+    if msg.HasField("documentWithCaptionMessage"):
+        return msg.documentWithCaptionMessage.message
+    return msg
+
+
 def parse_event(ev) -> Incoming:
     src = ev.Info.MessageSource
-    msg = ev.Message
+    outer = ev.Message
+    msg = media_message(outer)
     mentioned: set[str] = set()
     quoted_participant = quoted_text = ""
     for name in _CTX_FIELDS:
@@ -51,6 +61,8 @@ def parse_event(ev) -> Incoming:
             if ctx.HasField("quotedMessage"):
                 quoted_text = extract_text(ctx.quotedMessage) or ""
             break
+    has_document = msg.HasField("documentMessage")
+    document_name = msg.documentMessage.fileName if has_document else ""
     return Incoming(
         chat=Jid2String(JIDToNonAD(src.Chat)),
         sender=src.Sender.User,
@@ -58,10 +70,12 @@ def parse_event(ev) -> Incoming:
         sender_name=ev.Info.Pushname or src.Sender.User,
         is_group=src.IsGroup,
         from_me=src.IsFromMe,
-        text=(extract_text(msg) or "").strip(),
+        text=(extract_text(outer) or extract_text(msg) or msg.documentMessage.caption or "").strip(),
         mentioned=mentioned,
         quoted_participant=quoted_participant,
         quoted_text=quoted_text.strip(),
+        has_document=has_document,
+        document_name=document_name,
         timestamp=_timestamp(ev.Info.Timestamp),
     )
 

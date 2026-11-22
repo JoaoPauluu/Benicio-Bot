@@ -5,7 +5,8 @@ from whatsapp_bot.scheduler import describe, parse_agendar
 USAGE = "HH:MM [diario|uteis|fds|seg,qua,..|AAAA-MM-DD|DD/MM/AAAA] <comando ou texto>"
 
 
-@command("agendar", help="agenda uma mensagem/comando neste chat", usage=USAGE, role=Role.ADMIN)
+@command("agendar", help="agenda uma mensagem/comando neste chat", usage=USAGE, role=Role.ADMIN,
+         aliases=("schedule",))
 async def agendar(ctx):
     try:
         hhmm, rule, payload = parse_agendar(ctx.args)
@@ -19,7 +20,8 @@ async def agendar(ctx):
     await ctx.reply(f"⏰ Agendado: {describe(item)}")
 
 
-@command("agendamentos", help="lista os agendamentos deste chat", role=Role.ADMIN)
+@command("agendamentos", help="lista os agendamentos deste chat", role=Role.ADMIN,
+         aliases=("schedules",))
 async def agendamentos(ctx):
     items = ctx.store.schedules(ctx.chat)
     if not items:
@@ -28,7 +30,8 @@ async def agendamentos(ctx):
     await ctx.reply("⏰ *Agendamentos*\n" + "\n".join(describe(i) for i in items))
 
 
-@command("desagendar", help="remove um agendamento", usage="<id>", role=Role.ADMIN)
+@command("desagendar", help="remove um agendamento", usage="<id>", role=Role.ADMIN,
+         aliases=("unschedule",))
 async def desagendar(ctx):
     if not ctx.args:
         await ctx.reply("Uso: desagendar <id> (veja os ids em *agendamentos*)")

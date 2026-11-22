@@ -7,8 +7,8 @@ from whatsapp_bot.registry import command
 from whatsapp_bot.roles import GRANTABLE, LABELS, Role, describe, from_values, parse_role
 
 USAGE = "[dar|tirar <cargo> <@pessoa|número>]"
-GIVE = {"dar", "add", "adicionar"}
-TAKE = {"tirar", "remover", "rm"}
+GIVE = {"dar", "add", "adicionar", "give", "grant"}
+TAKE = {"tirar", "remover", "rm", "take", "remove", "revoke"}
 
 
 def _target(ctx, extra_args: list[str]) -> set[str]:
@@ -31,7 +31,7 @@ def _choices() -> str:
     return ", ".join(LABELS[r] for r in sorted(GRANTABLE, key=list(Role).index))
 
 
-@command("cargo", help="lista/dá/tira cargos (globais)", usage=USAGE, role=Role.OWNER, aliases=("cargos",))
+@command("cargo", help="lista/dá/tira cargos (globais)", usage=USAGE, role=Role.OWNER, aliases=("cargos", "role", "roles"))
 async def cargo(ctx):
     if not ctx.args:
         holders = ctx.store.role_holders()

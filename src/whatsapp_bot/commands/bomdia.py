@@ -56,7 +56,7 @@ async def fetch_bomdia(url: str, day: str) -> str | None:
     return f"☀️ *Bom dia!*\n\n{text}" + (f"\n\n— _{author}_" if author else "")
 
 
-@command("bomdia", help="mensagem de bom dia do dia")
+@command("bomdia", help="mensagem de bom dia do dia", aliases=("goodmorning",))
 async def bomdia(ctx):
     day = datetime.now(ZoneInfo(ctx.settings.timezone)).date().isoformat()
     msg = await fetch_bomdia(ctx.settings.bomdia_url, day)

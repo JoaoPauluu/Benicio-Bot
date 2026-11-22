@@ -37,6 +37,8 @@ Build locally instead: `docker build -t benicio-bot .`
 - **DMs:** no mention needed. Only people with a role (owner, admin, mídia) get answers unless `ALLOW_DMS_FROM_OTHERS=true`.
 - **Replies:** every answer is a native WhatsApp reply. Scheduled sends are plain messages.
 
+Every command also has an English alias (shown in `ajuda`), e.g. `help`, `schedule`, `download`.
+
 | Command | Who | What |
 |---|---|---|
 | `ajuda` | all | list the commands you are allowed to run (🔒 marks the required role) |
@@ -49,8 +51,31 @@ Build locally instead: `docker build -t benicio-bot .`
 | `prompt [texto\|limpar]` | admin | extra Gemini instructions for this chat |
 | `recurso [nome on\|off]` | admin | per-chat switches (`ia`, `comentarista`, …) |
 | `ping` | admin | liveness check |
+| `baixar [baixa\|media\|alta\|max\|audio] link1, link2` | media | download links via AIO Toolkit (yt-dlp) and send them here |
+| `baixar cookies` | owner | set the `cookies.txt` used by every download |
 | `cargo` / `cargos` | owner | list roles |
 | `cargo dar\|tirar <admin\|media> <@pessoa\|número>` | owner | give / take a role (you can also reply to the person's message) |
+
+### Downloads (`baixar` / `download`)
+
+`@bot baixar alta youtube.com/watch?v=…, instagram.com/reel/…` downloads each link through the
+AIO Toolkit `ytdlp` plugin at `AIO_BASE_URL` and replies with the video.
+
+| Preset | Result |
+|---|---|
+| `baixa` / `low` | 360p |
+| `media` / `medium` (default) | 480p, small enough for WhatsApp |
+| `alta` / `high` | 720p |
+| `max` | 1080p |
+| `audio` / `mp3` | MP3 audio |
+
+A number such as `720` also works. Files over `BAIXAR_MAX_MB` (100 MB by default) are uploaded to an
+AIO share instead, and the bot sends the link (expires after `BAIXAR_SHARE_EXPIRES`).
+
+**Cookies** (for age-restricted or members-only videos): the owner sends `baixar cookies`, and the bot
+answers "🍪 Responda essa mensagem com o arquivo cookies.txt.". Reply to *that* message with the
+Netscape-format `cookies.txt` as a document. It is stored in `data/cookies.txt` and used by every
+`baixar` until you send a new one, which replaces it.
 
 ### Roles
 

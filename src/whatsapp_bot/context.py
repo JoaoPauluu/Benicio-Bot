@@ -31,6 +31,7 @@ class Context:
     triggered: bool = False        # bot was mentioned (group) or DM'd
     incoming: "Incoming | None" = None
     event: Any = None              # raw neonize MessageEv (None for scheduled runs)
+    handled: bool = False          # a listener set this: skip command dispatch / AI
 
     @property
     def is_owner(self) -> bool:

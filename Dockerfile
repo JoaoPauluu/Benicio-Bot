@@ -10,9 +10,9 @@ RUN uv sync --locked --no-dev --no-editable
 
 # ---- runtime ---------------------------------------------------------------
 FROM python:3.12-slim-bookworm
-# libmagic: required by neonize (python-magic) to detect media types
+# libmagic: neonize (python-magic) media detection; ffmpeg: neonize probes/thumbnails videos it sends
 RUN apt-get update \
- && apt-get install -y --no-install-recommends libmagic1 \
+ && apt-get install -y --no-install-recommends libmagic1 ffmpeg \
  && rm -rf /var/lib/apt/lists/* \
  && useradd --create-home --uid 1000 benicio
 WORKDIR /app

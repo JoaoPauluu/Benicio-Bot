@@ -25,6 +25,20 @@ class FakeClient:
     async def send_message(self, to, text):
         self.sent.append(("send", text, f"{to.User}@{to.Server}"))
 
+    async def send_video(self, to, file, caption=None, quoted=None, **kw):
+        self.sent.append(("video", file, quoted))
+
+    async def send_audio(self, to, file, ptt=False, quoted=None, **kw):
+        self.sent.append(("audio", file, quoted))
+
+    async def send_document(self, to, file, caption=None, title=None, filename=None, quoted=None, **kw):
+        self.sent.append(("document", file, quoted))
+
+    downloads: dict = field(default_factory=dict)   # message -> bytes, for download_any
+
+    async def download_any(self, message, path=None):
+        return self.downloads.get(id(message), b"")
+
 
 class FakeAI:
     model = "fake-model"
