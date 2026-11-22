@@ -34,6 +34,9 @@ class FakeClient:
     async def send_document(self, to, file, caption=None, title=None, filename=None, quoted=None, **kw):
         self.sent.append(("document", file, quoted))
 
+    async def send_sticker(self, to, file, quoted=None, **kw):
+        self.sent.append(("sticker", file, quoted))
+
     downloads: dict = field(default_factory=dict)   # message -> bytes, for download_any
 
     async def download_any(self, message, path=None):
@@ -45,6 +48,12 @@ class FakeAI:
 
     def __init__(self):
         self.calls = []
+        self.gif_queries = []
+        self.gif_answer = "cat bruh meme"
+
+    async def gif_query(self, contents, *extra):
+        self.gif_queries.append((contents, extra))
+        return self.gif_answer
 
     def read_prompt(self, name):
         return f"<{name}>"

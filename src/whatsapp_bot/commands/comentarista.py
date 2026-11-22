@@ -1,9 +1,11 @@
 """Commentator mode: every N messages in a group, the AI comments on them."""
 
+import random
 from collections import defaultdict, deque
 
 from whatsapp_bot.registry import command, feature, listener
 from whatsapp_bot.roles import Role
+from whatsapp_bot.stickers import COMMENT_BOTH, COMMENT_STICKER_ONLY, contextual_sticker
 
 FEATURE = feature("comentarista", help="comenta a conversa a cada N mensagens")
 
@@ -44,5 +46,12 @@ async def _comment(ctx, transcript: str) -> None:
     extra = [ctx.ai.read_prompt("comentarista")]
     if prompt := ctx.store.get_prompt(ctx.chat):
         extra.append(f"Instruções específicas deste chat:\n{prompt}")
-    text = await ctx.ai.ask(f"Últimas mensagens do grupo:\n{transcript}", *extra)
+    contents = f"Últimas mensagens do grupo:\n{transcript}"
+    roll = random.random()
+    if COMMENT_BOTH <= roll < COMMENT_BOTH + COMMENT_STICKER_ONLY:
+        if await contextual_sticker(ctx, contents, *extra):
+            return  # sticker instead of text; no gif found -> fall back to the text comment
+    text = await ctx.ai.ask(contents, *extra)
     await ctx.reply(text)  # quotes the message that completed the batch
+    if roll < COMMENT_BOTH:
+        await contextual_sticker(ctx, contents, *extra)

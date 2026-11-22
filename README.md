@@ -44,6 +44,7 @@ Every command also has an English alias (shown in `ajuda`), e.g. `help`, `schedu
 | `ajuda` | all | list the commands you are allowed to run (🔒 marks the required role) |
 | `bomdia` | all | quote of the day from pensador.com, with Gemini as fallback |
 | `ia <texto>` | all | ask Gemini explicitly (handy inside schedules) |
+| `figurinha <termo>` | all | animated sticker from a KLIPY GIF search (aliases `sticker`, `fig`) |
 | `status` | admin | uptime, model, schedules |
 | `comentarista` | admin | toggle commentator mode in this group (every `COMENTARISTA_INTERVAL` msgs) |
 | `agendar HH:MM [diario\|uteis\|fds\|seg,qua\|AAAA-MM-DD] <comando ou texto>` | admin | schedule in this chat |
@@ -77,6 +78,21 @@ answers "🍪 Responda essa mensagem com o arquivo cookies.txt.". Reply to *that
 Netscape-format `cookies.txt` as a document. It is stored in `data/cookies.txt` and used by every
 `baixar` until you send a new one, which replaces it.
 
+### Stickers (`figurinha` / `sticker`)
+
+Needs `KLIPY_API_KEY` (from https://partner.klipy.com/api-keys; test keys allow 100 calls/hour).
+`@bot figurinha gato` searches KLIPY, picks a random GIF and sends it as an animated sticker, or answers
+that nothing was found. `KLIPY_LOCALE` and `KLIPY_CONTENT_FILTER` tune the search.
+
+The bot also sends stickers on its own. Gemini picks a meme-style GIF query from the conversation using
+`prompts/figurinha.md`:
+
+- **AI replies** (`ia` or a plain mention): a 1 in 8 chance of a sticker after the text.
+- **Commentator mode:** a 1 in 10 chance of text plus a sticker, and a 1 in 5 chance of a sticker instead
+  of the text. If no GIF is found, it sends the text.
+
+The chances are constants in `src/whatsapp_bot/stickers.py`.
+
 ### Roles
 
 Roles are global (they apply in every chat) and are saved in `data/state.json`.
@@ -91,6 +107,7 @@ Anyone who tries a command without the required role is told they are not allowe
 
 - `prompts/base.md` is the system prompt for **every** Gemini call.
 - `prompts/comentarista.md` is added on top of it in commentator mode.
+- `prompts/figurinha.md` is added when Gemini picks a GIF search query for a random sticker.
 - Files are re-read on each call, so edits apply without a restart.
 
 ## Adding a command

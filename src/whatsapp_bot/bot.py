@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 import time
 from collections.abc import Coroutine
 from typing import Any
@@ -13,8 +14,10 @@ from .aio import AIO
 from .config import Settings
 from .context import Context
 from .incoming import Identity, Incoming, parse_event, phone_variants
+from .klipy import Klipy
 from .registry import REGISTRY, Registry, load_commands
 from .roles import Role, allowed, describe, expand, from_values
+from .stickers import AI_STICKER_CHANCE, contextual_sticker
 from .store import Store
 
 log = logging.getLogger(__name__)
@@ -24,13 +27,14 @@ STALE_SECONDS = 60  # ignore messages older than this when (re)connecting
 
 class Bot:
     def __init__(self, settings: Settings, client: Any, ai: AI | None = None, store: Store | None = None,
-                 registry: Registry | None = None, aio: AIO | None = None):
+                 registry: Registry | None = None, aio: AIO | None = None, klipy: Klipy | None = None):
         self.settings = settings
         self.client = client
         self.ai = ai or AI(settings)
         self.store = store or Store(settings.data_dir / "state.json")
         self.registry = registry or load_commands()
         self.aio = aio or AIO(settings.aio_base_url, settings.baixar_timeout)
+        self.klipy = klipy or Klipy(settings.klipy_api_key, settings.klipy_locale, settings.klipy_content_filter)
         self.identity = Identity(settings.owner_number)
         self.started_at = time.time()
         self.scheduler = None  # set by main
@@ -156,7 +160,10 @@ class Bot:
         extra = [f"Você está em {where}."]
         if prompt := self.store.get_prompt(ctx.chat):
             extra.append(f"Instruções específicas deste chat:\n{prompt}")
-        await ctx.reply(await self.ai.ask("\n".join(parts), *extra))
+        contents = "\n".join(parts)
+        await ctx.reply(await self.ai.ask(contents, *extra))
+        if random.random() < AI_STICKER_CHANCE:
+            await contextual_sticker(ctx, contents, *extra)
 
     # ---- scheduled payloads --------------------------------------------
     async def run_payload(self, chat: str, payload: str) -> None:

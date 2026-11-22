@@ -66,3 +66,8 @@ class Context:
     async def send(self, text: str) -> None:
         """Plain message to this chat, no quote."""
         await self.bot.client.send_message(jid_from_str(self.chat), text)
+
+    async def send_sticker(self, data: bytes) -> None:
+        """Convert ``data`` (GIF/MP4/WebP/image) to a WhatsApp sticker and send it, quoting the trigger."""
+        await self.bot.client.send_sticker(jid_from_str(self.chat), data, quoted=self.event,
+                                           packname="Benício", enforce_not_broken=True)

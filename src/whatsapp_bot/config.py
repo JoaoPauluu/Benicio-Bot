@@ -42,6 +42,9 @@ class Settings:
     baixar_timeout: float = 1800.0      # seconds
     baixar_max_mb: float = 100.0        # bigger files go to a share link instead
     baixar_share_expires: str = "1d"
+    klipy_api_key: str = ""
+    klipy_locale: str = "br"
+    klipy_content_filter: str = "low"
 
 
 def load_settings(env_file: Path | None = None) -> Settings:
@@ -63,4 +66,7 @@ def load_settings(env_file: Path | None = None) -> Settings:
         baixar_timeout=parse_duration(os.getenv("BAIXAR_TIMEOUT", "30m")),
         baixar_max_mb=float(os.getenv("BAIXAR_MAX_MB", "100")),
         baixar_share_expires=os.getenv("BAIXAR_SHARE_EXPIRES", "1d"),
+        klipy_api_key=os.getenv("KLIPY_API_KEY", "").strip(),
+        klipy_locale=os.getenv("KLIPY_LOCALE", "br").strip(),
+        klipy_content_filter=os.getenv("KLIPY_CONTENT_FILTER", "low").strip().lower(),
     )
