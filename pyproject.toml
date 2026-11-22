@@ -1,0 +1,36 @@
+[project]
+name = "whatsapp-bot"
+version = "0.1.0"
+description = "Personal WhatsApp bot with Gemini (neonize)"
+readme = "README.md"
+authors = [
+    { name = "JoaoPauluu" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "apscheduler>=3.11.3",
+    "beautifulsoup4>=4.15.0",
+    "google-genai>=3.6.1",
+    "httpx>=0.28.1",
+    "neonize>=0.12.4",
+    "python-dotenv>=1.2.4",
+    "tzdata>=2026.6",
+]
+
+[project.scripts]
+whatsapp-bot = "whatsapp_bot.main:run"
+
+[build-system]
+requires = ["uv_build>=0.13.8,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.5.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]

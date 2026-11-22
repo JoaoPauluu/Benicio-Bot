@@ -1,0 +1,14 @@
+services:
+  benicio:
+    image: ghcr.io/joaopauluu/benicio-bot:latest
+    container_name: benicio-bot
+    restart: unless-stopped
+    env_file: .env            # GEMINI_API_KEY, GEMINI_MODEL, OWNER_NUMBER, ...
+    tty: true                 # renders the login QR code nicely in `docker compose logs`
+    volumes:
+      - benicio-data:/app/data   # WhatsApp session + schedules: keep it or you must re-scan the QR
+      # Optional: edit prompts on the host without rebuilding the image
+      # - ./prompts:/app/prompts:ro
+
+volumes:
+  benicio-data:
