@@ -13,7 +13,7 @@ from whatsapp_bot.config import Settings
 
 log = logging.getLogger(__name__)
 
-FALLBACK_ERROR = "Desculpa, não consegui pensar em uma resposta agora. 😅"
+NO_KEY = "GEMINI_API_KEY não configurada no .env."
 
 
 class AI:
@@ -35,11 +35,11 @@ class AI:
         parts = [self.read_prompt("base"), *extra]
         return "\n\n".join(p for p in parts if p and p.strip())
 
-    async def ask(self, contents: str, *extra_instructions: str) -> str:
-        """Send ``contents`` to Gemini. Returns a friendly error text on failure."""
+    async def ask(self, contents: str, *extra_instructions: str) -> str | None:
+        """Send ``contents`` to Gemini. None when Gemini fails (see services/fallback.py)."""
         if self._client is None:
-            return "GEMINI_API_KEY não configurada no .env."
-        return await self._generate(contents, *extra_instructions) or FALLBACK_ERROR
+            return NO_KEY
+        return await self._generate(contents, *extra_instructions)
 
     async def gif_query(self, contents: str, *extra_instructions: str) -> str | None:
         """Ask Gemini for a short GIF search query matching ``contents``. None on failure."""

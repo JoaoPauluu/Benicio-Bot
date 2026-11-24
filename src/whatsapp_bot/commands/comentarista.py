@@ -6,6 +6,7 @@ from collections import defaultdict, deque
 from whatsapp_bot.core.context import Context
 from whatsapp_bot.core.registry import command, feature, listener
 from whatsapp_bot.core.roles import Role
+from whatsapp_bot.services.fallback import send_ai_error
 from whatsapp_bot.services.stickers import COMMENT_BOTH, COMMENT_STICKER_ONLY, contextual_sticker
 
 FEATURE = feature("comentarista", help="comenta a conversa a cada N mensagens")
@@ -51,6 +52,9 @@ async def _comment(ctx: Context, transcript: str) -> None:
     if sticker_only and await contextual_sticker(ctx, contents, *extra):
         return  # sticker instead of text; no gif found -> fall back to the text comment
     text = await ctx.ai.ask(contents, *extra)
+    if text is None:
+        await send_ai_error(ctx)
+        return  # no contextual sticker either: it would hit the failing Gemini again
     await ctx.reply(text)  # quotes the message that completed the batch
     if roll < COMMENT_BOTH:
         await contextual_sticker(ctx, contents, *extra)

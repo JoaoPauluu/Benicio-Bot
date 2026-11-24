@@ -6,6 +6,7 @@ import random
 from typing import TYPE_CHECKING
 
 from whatsapp_bot.core.registry import feature
+from whatsapp_bot.services.fallback import send_ai_error
 from whatsapp_bot.services.stickers import AI_STICKER_CHANCE, contextual_sticker
 
 if TYPE_CHECKING:
@@ -23,6 +24,10 @@ async def chat_with_ai(ctx: Context) -> None:
     parts.append(f"{ctx.sender_name}: {ctx.text}")
     extra = [f"Você está em {where}.", *ctx.chat_instructions()]
     contents = "\n".join(parts)
-    await ctx.reply(await ctx.ai.ask(contents, *extra))
+    text = await ctx.ai.ask(contents, *extra)
+    if text is None:
+        await send_ai_error(ctx)
+        return
+    await ctx.reply(text)
     if random.random() < AI_STICKER_CHANCE:
         await contextual_sticker(ctx, contents, *extra)

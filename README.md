@@ -108,6 +108,7 @@ Anyone who tries a command without the required role is told they are not allowe
 - `prompts/base.md` is the system prompt for **every** Gemini call.
 - `prompts/comentarista.md` is added on top of it in commentator mode.
 - `prompts/figurinha.md` is added when Gemini picks a GIF search query for a random sticker.
+- `prompts/erro.md` is **not** sent to Gemini: when a Gemini call fails (high demand, rate limit...), the bot replies with a random message from it, a random sticker (`shitpost`, `confused dog`, `this is fine`), or both.
 - Files are re-read on each call, so edits apply without a restart.
 
 ## Adding a command

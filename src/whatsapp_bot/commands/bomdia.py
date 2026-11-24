@@ -10,6 +10,7 @@ from bs4 import BeautifulSoup
 
 from whatsapp_bot.core.context import Context
 from whatsapp_bot.core.registry import command
+from whatsapp_bot.services.fallback import send_ai_error
 
 log = logging.getLogger(__name__)
 
@@ -64,5 +65,9 @@ async def bomdia(ctx: Context):
     day = datetime.now(ZoneInfo(ctx.settings.timezone)).date().isoformat()
     msg = await fetch_bomdia(ctx.settings.bomdia_url, day)
     if msg is None:  # site down / layout changed: never send nothing
-        msg = "☀️ " + await ctx.ai.ask("Escreva uma mensagem curta e calorosa de bom dia para um grupo de amigos.")
+        text = await ctx.ai.ask("Escreva uma mensagem curta e calorosa de bom dia para um grupo de amigos.")
+        if text is None:
+            await send_ai_error(ctx, prefix="☀️ ")
+            return
+        msg = "☀️ " + text
     await ctx.reply(msg)
