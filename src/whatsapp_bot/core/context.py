@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Any
 from whatsapp_bot.core.roles import Role
 from whatsapp_bot.whatsapp.jid import jid_from_str
 
+BOT_NAME = "Benício"
+
 if TYPE_CHECKING:
     from whatsapp_bot.config import Settings
     from whatsapp_bot.core.bot import Bot
@@ -64,11 +66,19 @@ class Context:
         if self.event is None:
             await self.send(text)
         else:
-            await self.bot.client.reply_message(text, quoted=self.event)
+            resp = await self.bot.client.reply_message(text, quoted=self.event)
+            self._remember_sent(resp, text, self.incoming.id if self.incoming else "")
 
     async def send(self, text: str) -> None:
         """Plain message to this chat, no quote."""
-        await self.bot.client.send_message(jid_from_str(self.chat), text)
+        resp = await self.bot.client.send_message(jid_from_str(self.chat), text)
+        self._remember_sent(resp, text)
+
+    def _remember_sent(self, resp: Any, text: str, parent_id: str = "") -> None:
+        """Log the bot's own message so replies to it can rebuild the chain."""
+        msg_id = getattr(resp, "ID", "")
+        if isinstance(msg_id, str) and msg_id:
+            self.bot.history.record(self.chat, msg_id, BOT_NAME, text, parent_id)
 
     async def send_sticker(self, data: bytes) -> None:
         """Convert ``data`` (GIF/MP4/WebP/image) to a WhatsApp sticker and send it, quoting the trigger."""

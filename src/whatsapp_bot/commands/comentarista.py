@@ -14,13 +14,30 @@ FEATURE = feature("comentarista", help="comenta a conversa a cada N mensagens")
 _buffers: dict[str, deque] = defaultdict(deque)
 
 
-@command("comentarista", help="liga/desliga o modo comentarista neste grupo", role=Role.ADMIN, group_only=True,
-         aliases=("commentator",))
+INTERVAL_KEY = "comentarista_interval"
+MIN_INTERVAL, MAX_INTERVAL = 2, 100
+
+
+def interval(ctx: Context) -> int:
+    """Messages between comments in this group: set with ``comentarista N``, else COMENTARISTA_INTERVAL."""
+    return int(ctx.store.get_value(ctx.chat, INTERVAL_KEY, ctx.settings.comentarista_interval))
+
+
+@command("comentarista", help="liga/desliga o modo comentarista neste grupo (N = a cada N mensagens)",
+         usage="[N]", role=Role.ADMIN, group_only=True, aliases=("commentator",))
 async def toggle(ctx: Context):
-    on = not ctx.store.get_flag(ctx.chat, FEATURE.name)
+    if ctx.args:
+        arg = ctx.args[0]
+        if not arg.isdigit() or not MIN_INTERVAL <= int(arg) <= MAX_INTERVAL:
+            await ctx.reply(f"Uso: comentarista [N], com N entre {MIN_INTERVAL} e {MAX_INTERVAL}.")
+            return
+        ctx.store.set_value(ctx.chat, INTERVAL_KEY, int(arg))
+        on = True
+    else:
+        on = not ctx.store.get_flag(ctx.chat, FEATURE.name)
     ctx.store.set_flag(ctx.chat, FEATURE.name, on)
     _buffers.pop(ctx.chat, None)
-    n = ctx.settings.comentarista_interval
+    n = interval(ctx)
     await ctx.reply(f"🎙️ Comentarista {'ligado' if on else 'desligado'}" + (f" (a cada {n} mensagens)." if on else "."))
 
 
@@ -36,8 +53,7 @@ async def count_messages(ctx: Context):
         return  # the toggle command itself (any alias) doesn't count as conversation
     buf = _buffers[ctx.chat]
     buf.append(f"{inc.sender_name}: {inc.text}")
-    n = ctx.settings.comentarista_interval
-    if len(buf) < n:
+    if len(buf) < interval(ctx):
         return
     transcript = "\n".join(buf)
     buf.clear()

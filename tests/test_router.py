@@ -115,16 +115,17 @@ def test_parse_real_protobuf_event():
                 SenderAlt=p.JID(User=OWNER, Server="s.whatsapp.net"),
                 IsGroup=True, IsFromMe=False,
             ),
-            Pushname="Ana", Timestamp=int(time.time()),
+            Pushname="Ana", Timestamp=int(time.time()), ID="MSG1",
         ),
         Message=Message(extendedTextMessage=ExtendedTextMessage(
             text=f"@{BOT_LID} status",
-            contextInfo=ContextInfo(mentionedJID=[f"{BOT_LID}@lid"]),
+            contextInfo=ContextInfo(mentionedJID=[f"{BOT_LID}@lid"], stanzaID="QUOTED1"),
         )),
     )
     inc = parse_event(ev)
     assert inc.chat == GROUP and inc.is_group and inc.sender == OWNER_LID and inc.sender_alt == OWNER
     assert inc.mentioned == {BOT_LID} and inc.text.endswith("status") and inc.sender_name == "Ana"
+    assert inc.id == "MSG1" and inc.quoted_id == "QUOTED1"
 
 
 def test_brazilian_ninth_digit_owner_matches_both_forms():
@@ -240,3 +241,29 @@ async def test_dm_from_role_holder_is_answered(bot):
     bot.store.grant_role({STRANGER}, "media")
     await bot.handle(dm("ping", sender=STRANGER))
     assert "🚫" in bot.client.sent[-1][1]
+
+
+OTHER_GROUP = "120363000000000002@g.us"
+
+
+async def test_comentarista_interval_per_group(bot):
+    await bot.handle(group_msg("comentarista 2"))  # off -> on, every 2 msgs here
+    assert bot.client.sent[-1][1] == "🎙️ Comentarista ligado (a cada 2 mensagens)."
+    await bot.handle(group_msg("comentarista", chat=OTHER_GROUP))  # default interval (3 in tests)
+    assert bot.client.sent[-1][1] == "🎙️ Comentarista ligado (a cada 3 mensagens)."
+    for i in range(2):
+        await bot.handle(group_msg(f"a{i}", sender=STRANGER, mention=False))
+        await bot.handle(group_msg(f"b{i}", sender=STRANGER, mention=False, chat=OTHER_GROUP))
+    await bot.drain()
+    assert len(bot.ai.calls) == 1 and "a1" in bot.ai.calls[0][0]  # only the N=2 group fired
+    await bot.handle(group_msg("comentarista"))
+    assert bot.client.sent[-1][1] == "🎙️ Comentarista desligado."
+    await bot.handle(group_msg("comentarista"))
+    assert bot.client.sent[-1][1] == "🎙️ Comentarista ligado (a cada 2 mensagens)."  # interval kept
+
+
+async def test_comentarista_invalid_interval(bot):
+    for arg in ("abc", "1", "101", "-5"):
+        await bot.handle(group_msg(f"comentarista {arg}"))
+        assert bot.client.sent[-1][1].startswith("Uso: comentarista [N]")
+    assert not bot.store.get_flag(GROUP, "comentarista")

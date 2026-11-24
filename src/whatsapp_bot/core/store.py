@@ -58,6 +58,14 @@ class Store:
         self._chat(chat)["prompt"] = prompt
         self._save()
 
+    # ---- per-chat values (settings that are not on/off) -------------------
+    def get_value(self, chat: str, name: str, default: Any = None) -> Any:
+        return self._data["chats"].get(chat, {}).get("values", {}).get(name, default)
+
+    def set_value(self, chat: str, name: str, value: Any) -> None:
+        self._chat(chat).setdefault("values", {})[name] = value
+        self._save()
+
     # ---- schedules -----------------------------------------------------
     def schedules(self, chat: str | None = None) -> list[dict[str, Any]]:
         items = self._data["schedules"]

@@ -28,6 +28,8 @@ class Incoming:
     mentioned: set[str] = field(default_factory=set)
     quoted_participant: str = ""
     quoted_text: str = ""
+    id: str = ""                   # WhatsApp message id
+    quoted_id: str = ""            # id of the quoted message (replies)
     has_document: bool = False
     document_name: str = ""
     timestamp: float = field(default_factory=time.time)
@@ -51,12 +53,13 @@ def parse_event(ev) -> Incoming:
     outer = ev.Message
     msg = media_message(outer)
     mentioned: set[str] = set()
-    quoted_participant = quoted_text = ""
+    quoted_participant = quoted_text = quoted_id = ""
     for name in _CTX_FIELDS:
         if msg.HasField(name):
             info = getattr(msg, name).contextInfo
             mentioned = {user_of(j) for j in info.mentionedJID}
             quoted_participant = user_of(info.participant) if info.participant else ""
+            quoted_id = info.stanzaID
             if info.HasField("quotedMessage"):
                 quoted_text = extract_text(info.quotedMessage) or ""
             break
@@ -72,6 +75,8 @@ def parse_event(ev) -> Incoming:
         mentioned=mentioned,
         quoted_participant=quoted_participant,
         quoted_text=quoted_text.strip(),
+        id=ev.Info.ID,
+        quoted_id=quoted_id,
         has_document=has_document,
         document_name=msg.documentMessage.fileName if has_document else "",
         timestamp=_timestamp(ev.Info.Timestamp),

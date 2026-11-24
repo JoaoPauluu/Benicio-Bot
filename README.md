@@ -46,7 +46,7 @@ Every command also has an English alias (shown in `ajuda`), e.g. `help`, `schedu
 | `ia <texto>` | all | ask Gemini explicitly (handy inside schedules) |
 | `figurinha <termo>` | all | animated sticker from a KLIPY GIF search (aliases `sticker`, `fig`) |
 | `status` | admin | uptime, model, schedules |
-| `comentarista` | admin | toggle commentator mode in this group (every `COMENTARISTA_INTERVAL` msgs) |
+| `comentarista [N]` | admin | toggle commentator mode in this group (every `COMENTARISTA_INTERVAL` msgs); with `N`, turn it on commenting every N msgs in this group (2–100) |
 | `agendar HH:MM [diario\|uteis\|fds\|seg,qua\|AAAA-MM-DD] <comando ou texto>` | admin | schedule in this chat |
 | `agendamentos` / `desagendar <id>` | admin | list / remove schedules |
 | `prompt [texto\|limpar]` | admin | extra Gemini instructions for this chat |

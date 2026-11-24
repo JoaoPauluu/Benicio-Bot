@@ -1,5 +1,6 @@
 import time
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 
 import pytest
 
@@ -18,12 +19,19 @@ GROUP = "120363000000000001@g.us"
 @dataclass
 class FakeClient:
     sent: list = field(default_factory=list)
+    sent_ids: list = field(default_factory=list)   # ids "BOT1", "BOT2"... of sent texts, like SendResponse.ID
+
+    def _response(self):
+        self.sent_ids.append(f"BOT{len(self.sent_ids) + 1}")
+        return SimpleNamespace(ID=self.sent_ids[-1])
 
     async def reply_message(self, text, quoted):
         self.sent.append(("reply", text, quoted))
+        return self._response()
 
     async def send_message(self, to, text):
         self.sent.append(("send", text, f"{to.User}@{to.Server}"))
+        return self._response()
 
     async def send_video(self, to, file, caption=None, quoted=None, **kw):
         self.sent.append(("video", file, quoted))
@@ -75,12 +83,12 @@ def bot(tmp_path):
     return b
 
 
-def group_msg(text, sender=OWNER, mention=True, name="Ana", lid=None):
+def group_msg(text, sender=OWNER, mention=True, name="Ana", lid=None, chat=GROUP, **kw):
     mentioned = {BOT_LID} if mention else set()
     if mention:
         text = f"@{BOT_LID} {text}"
-    return Incoming(chat=GROUP, sender=lid or sender, sender_alt=sender if lid else "", sender_name=name,
-                    is_group=True, text=text, mentioned=mentioned, timestamp=time.time())
+    return Incoming(chat=chat, sender=lid or sender, sender_alt=sender if lid else "", sender_name=name,
+                    is_group=True, text=text, mentioned=mentioned, timestamp=time.time(), **kw)
 
 
 def dm(text, sender=OWNER):

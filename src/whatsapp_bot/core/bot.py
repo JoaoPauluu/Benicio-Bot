@@ -18,6 +18,7 @@ from whatsapp_bot.core.store import Store
 from whatsapp_bot.services.ai import AI
 from whatsapp_bot.services.aio import AIO
 from whatsapp_bot.services.conversation import AI_FEATURE, chat_with_ai
+from whatsapp_bot.services.history import MessageLog
 from whatsapp_bot.services.klipy import Klipy
 from whatsapp_bot.whatsapp.identity import Identity, phone_variants, sender_ids
 from whatsapp_bot.whatsapp.incoming import Incoming, parse_event
@@ -42,6 +43,7 @@ class Bot:
         self.aio = aio or AIO(settings.aio_base_url, settings.baixar_timeout)
         self.klipy = klipy or Klipy(settings.klipy_api_key, settings.klipy_locale, settings.klipy_content_filter)
         self.identity = Identity(settings.owner_number)
+        self.history = MessageLog()
         self.started_at = time.time()
         self.scheduler: Scheduler | None = None  # set by main
         self._tasks: set[asyncio.Task] = set()
@@ -95,6 +97,7 @@ class Bot:
             log.info("  -> ignored: stale (sent before the bot started)")
             return
         self.identity.learn(inc)
+        self.history.record(inc.chat, inc.id, inc.sender_name, inc.text, inc.quoted_id)
         roles = self.user_roles(inc)
 
         if inc.is_group:
