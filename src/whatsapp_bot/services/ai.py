@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from pathlib import Path
 
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 
 from whatsapp_bot.config import Settings
 
 log = logging.getLogger(__name__)
 
 NO_KEY = "GEMINI_API_KEY não configurada no .env."
+RETRY_DELAYS = (1, 4)  # seconds before the 2nd and 3rd attempt when Gemini answers 503
 
 
 class AI:
@@ -50,16 +52,24 @@ class AI:
         """Raw Gemini call: the response text, or None when unavailable / on error."""
         if self._client is None:
             return None
-        try:
-            resp = await self._client.aio.models.generate_content(
-                model=self.model,
-                contents=contents,
-                config=types.GenerateContentConfig(system_instruction=self.system_prompt(*extra_instructions)),
-            )
-            return (resp.text or "").strip() or None
-        except Exception:
-            log.exception("Gemini request failed")
-            return None
+        config = types.GenerateContentConfig(system_instruction=self.system_prompt(*extra_instructions))
+        delays = list(RETRY_DELAYS)
+        while True:
+            try:
+                resp = await self._client.aio.models.generate_content(
+                    model=self.model, contents=contents, config=config)
+                return (resp.text or "").strip() or None
+            except errors.APIError as e:
+                if e.code == 503 and delays:
+                    delay = delays.pop(0)
+                    log.warning("Gemini 503 (overloaded), retrying in %ss", delay)
+                    await asyncio.sleep(delay)
+                    continue
+                log.exception("Gemini request failed")
+                return None
+            except Exception:
+                log.exception("Gemini request failed")
+                return None
 
 
 def clean_query(text: str, limit: int = 60) -> str | None:
